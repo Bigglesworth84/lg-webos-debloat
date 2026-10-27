@@ -42,6 +42,7 @@ class WebOSCliPathTests(unittest.TestCase):
             "  if [[ \"$arg\" == /workspace/lg-webos-debloat/scripts/webos-cli-path.sh ]]; then arg=$MOCK_WEBOS_CLI_PATH_HELPER; fi\n"
             "  args+=(\"$arg\")\n"
             "done\n"
+            "if [[ -n \"${MOCK_CONTAINER_HOME:-}\" ]]; then HOME=$MOCK_CONTAINER_HOME; export HOME; fi\n"
             "exec /bin/bash \"${args[@]}\"\n",
         )
 
@@ -59,6 +60,7 @@ class WebOSCliPathTests(unittest.TestCase):
             "HOME": str(self.home),
             "PATH": ":".join((str(self.mock_bin), str(self.other_bin), os.environ["PATH"])),
             "MOCK_WEBOS_CLI_PATH_HELPER": str(self.path_helper),
+            "WEBOS_CLI_HOME": str(self.home),
         }
 
     def run_entrypoint(self, action, *args):
@@ -192,6 +194,65 @@ class WebOSCliPathTests(unittest.TestCase):
         result = self.run_entrypoint("run")
         self.assertEqual(result.returncode, 2)
         self.assertIn("A command is required", result.stderr)
+
+    def test_capture_checks_private_container_home_not_host_home(self):
+        # The host custom CLI home contains these commands, but Distrobox's
+        # HOME is deliberately different and lacks both operation binaries.
+        for name in ("ares-device", "ares-install"):
+            self.make_executable(self.npm_bin / name, "#!/bin/bash\necho host-cli-ran >> \"$MOCK_CAPTURE_LOG\"\n")
+        container_home = self.root / "container-private-home"
+        container_npm_bin = container_home / ".local/npm/bin"
+        container_node_bin = container_home / ".local/opt/node-v24.22.1/bin"
+        container_npm_bin.mkdir(parents=True)
+        container_node_bin.mkdir(parents=True)
+        for name in ("ares", "ares-setup-device"):
+            self.make_executable(container_npm_bin / name, "#!/bin/sh\nexit 0\n")
+        self.make_executable(container_node_bin / "node", "#!/bin/sh\nexit 0\n")
+        env = {
+            **self.env(),
+            "MOCK_CONTAINER_HOME": str(container_home),
+            "MOCK_CAPTURE_LOG": str(self.root / "capture.log"),
+        }
+        result = subprocess.run(
+            ["/bin/bash", str(ENV_SCRIPT), "capture", "metadata", "tv",
+             "ares-device", "--system-info", "--device", "tv"],
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("Pinned webOS CLI is missing ares-device", result.stderr)
+        self.assertFalse((self.root / "capture.log").exists())
+
+    def test_capture_executes_container_pinned_binary_with_different_home(self):
+        container_home = self.root / "custom-container-home"
+        container_npm_bin = container_home / ".local/npm/bin"
+        container_node_bin = container_home / ".local/opt/node-v24.22.1/bin"
+        container_npm_bin.mkdir(parents=True)
+        container_node_bin.mkdir(parents=True)
+        for name in ("ares", "ares-setup-device"):
+            self.make_executable(container_npm_bin / name, "#!/bin/sh\nexit 0\n")
+        self.make_executable(container_node_bin / "node", "#!/bin/sh\nexit 0\n")
+        calls = self.root / "pinned-calls"
+        self.make_executable(
+            container_npm_bin / "ares-device",
+            f"#!/bin/bash\nprintf '%s\\0' \"$0\" \"$@\" > '{calls}'\nexit 0\n",
+        )
+        self.make_executable(container_npm_bin / "ares-install", "#!/bin/sh\nexit 0\n")
+        env = {**self.env(), "MOCK_CONTAINER_HOME": str(container_home)}
+        result = subprocess.run(
+            ["/bin/bash", str(ENV_SCRIPT), "capture", "metadata", "tv",
+             "ares-device", "--system-info", "--device", "tv"],
+            env=env,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls.read_bytes().split(b"\0")[:-1], [
+            str(container_npm_bin / "ares-device").encode(), b"--system-info", b"--device", b"tv",
+        ])
 
 
 if __name__ == "__main__":

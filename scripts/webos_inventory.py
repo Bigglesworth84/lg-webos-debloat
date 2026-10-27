@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Offline-only webOS inventory fixture and snapshot utility.
+"""Offline fixture snapshot and local validation utilities for webOS inventory.
 
-This module deliberately has no device command executor. It can document the
-approved future command vectors, ingest sanitized fixtures, and validate
-local snapshot manifests without opening a network connection.
+The separate webos_live_capture.py adapter supervises a tightly allowlisted
+read-only capture. This module retains the offline fixture interface.
 """
 
 from __future__ import annotations
@@ -36,7 +35,7 @@ SENSITIVE_TEXT = re.compile(
     r"authorization|private.?key|account|email|mac(?:address)?|"
     r"ip(?:address)?|hostname)\b\s*[:=]\s*)([^\r\n,;]+)"
 )
-METADATA_FIELDS = ("modelName", "sdkVersion", "firmwareVersion", "boardType", "otaId")
+METADATA_FIELDS = ("modelName", "sdkVersion", "firmwareVersion", "boardType")
 ALIAS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$")
 
 
@@ -314,6 +313,13 @@ def validate_snapshot(snapshot: Path) -> list[str]:
         raise InventoryError(f"Cannot read snapshot manifest: {exc}") from exc
     if not isinstance(manifest, dict):
         raise InventoryError("Snapshot manifest must be a JSON object.")
+    if manifest.get("schema_version") == 2:
+        try:
+            from .webos_live_capture import validate_live_snapshot
+        except ImportError:
+            from webos_live_capture import validate_live_snapshot
+
+        return validate_live_snapshot(snapshot, manifest)
     if manifest.get("schema_version") != 1:
         return ["unsupported manifest schema"]
     required_fields = {
