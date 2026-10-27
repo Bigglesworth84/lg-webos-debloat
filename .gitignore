@@ -1,3 +1,24 @@
 # Local device snapshots may contain sensitive configuration metadata.
 /backups/*
 !/backups/.gitkeep
+
+# webOS CLI profiles can contain host addresses, key names and passphrases.
+# Keep the isolated Distrobox home outside the repository as well.
+/.webos-cli/
+/.webos-cli-home/
+/.webos/
+/.ssh/
+*.pem
+*.key
+*_webos
+novacom-devices.json
+
+# Local inventory output, diagnostics, and temporary captures.
+/inventory-output/
+/diagnostics/
+/logs/
+*.log
+*.tmp
+*.partial
+__pycache__/
+*.py[cod]

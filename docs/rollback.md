@@ -1,6 +1,6 @@
 # Rollback and recovery
 
-The native settings below were configured by the owner. This repository change itself changes documentation only; no TV setting, firmware, app, or network configuration was changed by this project. See [recovery policy](recovery-policy.md) for the mandatory backup-first gate and recovery classification.
+The native settings below were configured by the owner. The Milestone 003 Slice 1 change adds offline inventory tooling and a local rootless Distrobox CLI environment; no TV setting, firmware, app, or network configuration was changed by this project. See [recovery policy](recovery-policy.md) for the mandatory backup-first gate and recovery classification.
 
 ## Recovery status for the recorded native settings
 
@@ -35,3 +35,7 @@ No application removal is approved or implemented. Unknown apps and system compo
 ## Rooting
 
 Rooting is deferred. No verified recovery or downgrade path is established for this exact model and firmware. Do not treat factory reset as guaranteed root recovery.
+
+## Offline workstation tooling
+
+The rootless `webos-cli-m003` Distrobox can be removed with `scripts/webos-cli-env.sh remove`. This removes the container but intentionally keeps its custom home under `${XDG_DATA_HOME:-$HOME/.local/share}/lg-webos-cli-home`; inspect it before deleting it because a future approved pairing would place profiles and SSH keys there. This slice created no real device profile or key. The user-local Distrobox executable was installed under `~/.local/bin` because it was absent on the workstation; removing the box does not remove that host tool. No TV recovery action is relevant to this workstation setup.

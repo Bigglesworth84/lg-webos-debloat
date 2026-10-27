@@ -1,0 +1,5 @@
+modelName : WEBOS6.0
+sdkVersion : 6.1.0
+firmwareVersion : 03.53.45
+boardType : K7LP_EU
+otaId : HE_DTV_W21P_EU
