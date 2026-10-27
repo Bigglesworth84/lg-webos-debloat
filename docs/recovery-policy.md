@@ -1,6 +1,6 @@
 # Backup and recovery policy
 
-This policy governs future state-changing work on the LG webOS device. It is a design and approval gate, not evidence that a device backup exists. The current project has not connected to the TV, exported its inventory, or captured a machine-readable backup.
+This policy governs future state-changing work on the LG webOS device. It is a design and approval gate, not evidence that a device backup exists. The owner reports a successful official CLI connection and system-information capture, plus app-list attempts that returned no records. No complete app catalogue, configuration export, or machine-readable restorable TV backup has been captured.
 
 ## Change gate
 
@@ -46,12 +46,16 @@ The current tooling foundation is deliberately offline-only: it builds the docum
 
 | Capability | Intended behavior | Current status |
 |---|---|---|
-| Inventory | Read-only device metadata and installed-app listing using explicit commands; export structured data and state incomplete coverage. | Offline parser/snapshot foundation only. Device connection and command execution are not implemented. Developer Mode and CLI setup require separate approval. |
+| Inventory | Read-only device metadata and installed-app listing using explicit commands; export structured data and state incomplete coverage. | Offline parser/snapshot foundation only. Owner reports the CLI system-info command succeeded, while `--list` and `--listfull` returned zero records (`--listfull` exit status 0). Coverage is unknown/incomplete and the reason for empty results is unestablished. No live-capture adapter is implemented. |
 | Backup | Timestamped snapshot, metadata, inventory, supported configuration exports, manifest, and checksums; distinguish observations from restorable artifacts. | Fixture snapshot creation only. No confirmed device backup interface or restorable TV state. |
 | Restore | Dry-run by default; explicit item selection; verify checksums, device identity, and firmware compatibility; restore only state supported by documented management interfaces; refuse unsupported items. | Not implemented. Restore requests are rejected; no restore interface has been established. |
 | Verify | Compare current read-only state with a selected baseline, report changes and gaps, and flag apps/functions needing manual checks. | Not implemented. App inventory completeness and configuration coverage are unknown. |
 
-The current `scripts/webos_inventory.py` has only `capture-fixtures` and `validate` actions. Application parse results include accepted, rejected and total counts when determinable; dropped or malformed records mark the inventory partial, and a valid empty array is distinct from missing or malformed output. `scripts/webos-cli-env.sh` and `scripts/install_webos_cli.sh` prepare workstation tooling, not TV operations. The allowlist argument builder is not an executor. Do not add a live capture wrapper until its exact supported operations and safe failure behavior can be documented and separately approved. Never hide mutations in inventory, backup, or verification. Do not provide generic bulk restore or removal; app inventory never establishes removability.
+The current `scripts/webos_inventory.py` has only `capture-fixtures` and `validate` actions. Application parse results include accepted, rejected and total counts when determinable; dropped or malformed records mark the inventory partial, and a valid empty fixture array is distinct from missing or malformed fixture output. That parser distinction does not prove that a live CLI zero-record response is a complete catalogue. `scripts/webos-cli-env.sh` and `scripts/install_webos_cli.sh` manage workstation tooling; they do not execute TV discovery. The allowlist argument builder is not an executor. Do not add a live capture wrapper until exact supported operations, permissions, coverage, and safe failure behavior are established and separately approved. Never hide mutations in inventory, backup, or verification. Do not provide generic bulk restore or removal; app inventory never establishes removability.
+
+LG's public consumer webOS TV Application Manager reference documents launch by a known app ID and checking whether a known app ID exists; it does not document a general installed-app enumeration method. LG staff stated that no general public installed-app listing API was available and that third-party app IDs generally were not public. LG's CLI guide describes `ares-install --list` and `--listfull` as listing installed apps but does not define complete consumer-TV coverage. Therefore the owner-reported empty result is recorded as **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**. Its precise cause remains unestablished. Do not infer an empty catalogue or that built-in/LG Store apps are absent.
+
+The webOS OSE Application Manager documents a `listApps` method under the `application.operation` access-control group, but OSE explicitly warns that its APIs are not guaranteed compatible with LG TVs. It is not a supported consumer-TV inventory route. Community SSAP clients may retrieve launch points over a paired local protocol; this is community tooling, not a documented complete or supported inventory interface, and is not approved for routine discovery in this project. A manual owner-confirmed Apps/Home screen list can supplement observations of visible launch points only. See [LG Application Manager](https://webostv.developer.lge.com/develop/references/application-manager), [LG CLI guide](https://webostv.developer.lge.com/develop/tools/cli-dev-guide), [LG forum response](https://forum.webostv.developer.lge.com/t/how-to-get-applist/8616), and [OSE compatibility note](https://www.webosose.org/docs/reference/).
 
 ## Current known recovery boundaries
 
@@ -59,6 +63,7 @@ The current `scripts/webos_inventory.py` has only `capture-fixtures` and `valida
 - App installation/removal and app-private data backup/restore support are unverified for this exact model and firmware. Reinstallation may lose local state.
 - Firmware downgrade support is unverified. Factory reset is not a guaranteed recovery route.
 - Developer Mode inventory will not be assumed to include every system package, configuration value, or user-data item. Developer Mode does not imply a system-level backup. Session expiry removes Developer Mode apps; document and validate renewal before future sideloading.
+- Owner reports that all functions continued normally after Developer Mode activation, but no per-feature pass is inferred from that overall observation. The HDMI, network, Emby, and protected-app details and remaining untested checks are recorded in [hardware.md](hardware.md).
 - Rooting is deferred; no verified root recovery or removal path is established.
 
 ## Security and preservation

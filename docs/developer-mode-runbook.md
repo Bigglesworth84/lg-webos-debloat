@@ -1,15 +1,14 @@
 # Developer Mode and read-only inventory runbook
 
-**Status: preparation only.** This runbook does not grant approval to connect to or change the LG 55UP81006LR. Any future device-facing slice needs a separate explicit approval after the backup-first gate in [recovery-policy.md](recovery-policy.md) is complete.
+**Status: Developer Mode and SSH pairing completed (owner-confirmed).** The owner reports the official Developer Mode app was installed, Developer Mode enabled after explicit approval, the TV rebooted successfully, SSH pairing completed after separate approval, and the Key Server was then turned off. These completed approvals do not authorize new device operations. Any future device-facing slice needs separate explicit approval after the backup-first gate in [recovery-policy.md](recovery-policy.md) is complete.
 
-## Before activation
+## Baseline and recovery gate for future state changes
 
-1. With the owner, complete [the pre-activation baseline](pre-activation-baseline.md) manually on the TV and connected equipment. This requires no computer connection to the TV. Record each used HDMI port separately, including its owner-identified device, picture and audio, switching, Game Mode, ALLM/HDR/CEC where supported or used, and limitations. Record Wi-Fi or Ethernet, internet and local-network behavior, Emby discovery/playback, and launch/playback for every protected app. Recheck the privacy and advertising settings without changing them. Mark unused or unsupported checks Not applicable with a reason; leave unobserved checks Not tested.
-2. Reconfirm the physical model and current firmware/webOS version on the TV immediately before any future state change. The values in [hardware.md](hardware.md) are prior owner-confirmed observations, not confirmation of current state. Do not treat CLI metadata as physical model proof.
-3. Identify what the manual baseline cannot recover: it records observations only. It does not export TV configuration, app-private data, account state, or a complete system image. No supported machine-readable TV backup or general restore interface is established. An offline application inventory is not a full-system backup.
-4. Before activation, present the recovery classification and consequences: installing the Developer Mode app changes installed-app state (**recovery unverified / irreversible** for this exact model until its removal/reinstall route is established); enabling Developer Mode changes TV state and reboots it (**partially reversible** through the app's status control, with sideloaded apps and local state at risk); app-local state after expiry/deactivation is **recovery unverified / irreversible**; SSH pairing stores local credentials and may leave TV-side authorization (**recovery unverified / irreversible** until revocation is documented). Expiry or deactivation can uninstall sideloaded apps. No complete backup or guaranteed factory-reset/downgrade recovery exists.
-5. Obtain and record separate explicit approval for Developer Mode app installation, activation, and SSH pairing/key retrieval. Approval for this offline preparation slice is not approval for any of these actions.
-6. Confirm every item in the readiness checklist at the end of [pre-activation-baseline.md](pre-activation-baseline.md). Do not proceed with unexplained baseline failures or an unverified CLI/credential setup.
+1. For any future state change, inspect the current set and firmware on the TV first. The owner-confirmed values in [hardware.md](hardware.md) are dated observations, not confirmation that the state has not changed. CLI metadata supplements but does not replace physical-device confirmation.
+2. Complete or update [the manual baseline](pre-activation-baseline.md) with the owner before changing state. It records behavior but cannot restore settings, app-private data, account state, or a complete system image. No supported machine-readable TV backup or general restore interface is established.
+3. Present the operation-specific recovery classification, accessible-state capture, coverage gaps, exact recovery steps and consequences, and verify the recovery route as far as possible without changing the TV. Developer Mode expiry/deactivation can uninstall Developer Mode apps; no complete backup or guaranteed factory-reset/downgrade recovery exists.
+4. Obtain and record separate explicit approval for each proposed operation. Past approvals for installation, activation, pairing, or read-only discovery do not approve future operations.
+5. Leave unexplained baseline failures unresolved before proceeding. Keep unsupported or unobserved functionality marked Not applicable with a reason or Not tested, respectively.
 
 ## Operation recovery boundaries
 
@@ -22,23 +21,18 @@
 
 Before each operation, record the original state, capture what is accessible, state coverage gaps, explain what cannot be restored, document and safely validate the recovery route, then obtain approval for that specific operation. Do not classify any operation as fully reversible based on these notes alone.
 
-## Install and activate Developer Mode
+## Completed setup (owner-reported)
 
-1. Confirm the private Distrobox CLI home is outside the repository, mode `0700`; verify its profile/key paths and permissions as described in [webOS CLI environment](webos-cli-environment.md). This workstation preparation does not connect to the TV.
-2. With the owner present, install the official Developer Mode app from LG Apps only if needed and only after its separate approval. Do not assume installation is reversible; see operation boundaries above.
-3. Sign in to the Developer Mode app using the owner's LG Developer account directly on the TV. Never collect or record the account password.
-4. Record the app's current Dev Mode status and remaining session time. Activate only after separate approval. Activation changes device state and LG documents that it reboots the TV. Wait for it to return, confirm ordinary startup and input operation, then repeat the same baseline tests from [pre-activation-baseline.md](pre-activation-baseline.md) and record a new date/result beside each original result.
-5. If any previously passing protected function now fails, stop further device changes. Record the failure, compare with the baseline, and investigate recovery before proceeding.
-6. Do not install, launch, or remove any other app in this slice.
+The owner reports that the CLI environment uses a private Distrobox home outside the repository, and that the official Developer Mode app was installed and enabled after separate approval. The TV rebooted successfully. SSH pairing/key retrieval completed after separate approval; the Key Server was later turned off. The owner reports no app has been sideloaded, replaced, or removed. Do not repeat setup or pairing steps unless a future, separately approved slice requires them. Never record credentials, passphrases, keys, or actual network addresses.
 
 ## SSH pairing and read-only inventory
 
 1. Have the owner open the Developer Mode app's Key Server control. Use a manually verified TV address from the TV's network status; do not scan the LAN.
 2. Add the target with an explicit alias, correct observed address, port `9922`, and user `prisoner`, for example `ares-setup-device --add <alias> --info "host=<observed-address>" --info "port=9922" --info "username=prisoner"`. This changes the workstation-side profile only. Keep the profile under the isolated custom home.
 3. After separate pairing approval, retrieve the key with `ares-novacom --getkey --device <alias>` while the owner is present to enter the short-lived passphrase at the interactive prompt. Never put the passphrase in shell history, command arguments, fixtures or logs. Verify that the CLI key is `0600` and profile data is `0600` within owner-only `0700` directories. Treat persistent TV-side key authorization and its revocation as unverified unless LG documents the lifecycle.
-4. For the approved capture only, run `ares-device --system-info --device <alias>`, `ares-install --device <alias> --list`; use `--listfull` only if its added fields are needed and approved. The alias is a required explicit value, not a scan target.
+4. The owner reports that `ares-device --system-info --device lounge-tv` succeeded. The owner also reports that `ares-install --device lounge-tv --list` and `--listfull` returned no application records, with `--listfull` exit status 0. Classify this as **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**. Its precise cause has not been established; do not interpret it as an empty catalogue.
 5. Store raw diagnostics in a private local directory separate from any redacted report. Redact serials, IP/MAC addresses, account values, passphrases, tokens, key material, and unrelated personal data before review or sharing.
-6. Create the local manifest with UTC timestamp, exact tool/runtime versions, coverage gaps, artifact classifications and SHA-256 hashes. Label metadata informational and app inventory read-only; record no restorable TV-state artifacts. Inventory does not establish removability or complete system coverage.
+6. No live-capture adapter or machine-readable device snapshot was created. A future approved capture must include UTC timestamps, exact tool/runtime versions, coverage gaps, artifact classifications and SHA-256 hashes; label metadata informational and app output read-only; record no restorable TV-state artifacts. Inventory does not establish removability or complete system coverage.
 
 ## Session expiry, renewal, and deactivation
 

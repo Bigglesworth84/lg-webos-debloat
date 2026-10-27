@@ -6,7 +6,7 @@ Native configuration comes before Developer Mode. The owner reports the initial 
 
 On 27 October 2026, the owner manually inspected and configured the settings recorded in [hardware.md](hardware.md). The owner observed the LG Channels promotional programme row disappear after Content Recommendation was disabled; TV function shortcuts took its place. The introductory banner remained, as did protected app tiles. These are owner observations, not project-side verification. Application launch/playback and HDMI, CEC, HDR, Game Mode, audio, network, Bluetooth, and Steam Link regression checks remain open.
 
-No machine-readable backup was captured. There is no confirmed device-facing backup or restore interface. The current project slice records results and defines the recovery framework; it does not connect to or modify the TV.
+No machine-readable backup was captured. There is no confirmed device-facing backup or restore interface. The earlier native-configuration and offline-tooling slices did not connect to or modify the TV; the owner reports that Developer Mode connection and read-only discovery occurred later under separate approvals. Slice 3A itself makes only local documentation and workstation-tooling changes.
 
 ## Native optimisation procedure
 
@@ -60,17 +60,13 @@ Before each change, record the current value and date in [the baseline checklist
 - **Rollback:** restore the recorded order or unhide the shortcut.
 - **Validate:** launch BBC iPlayer, Netflix, Channel 4, Disney+, Emby, Prime Video, and Apple TV; verify Emby server discovery and playback.
 
-## Future Developer Mode preparation
+## Milestone 003 live discovery status
 
-The next implementation slice is preparation and read-only discovery only. Before any TV connection or Developer Mode activation, obtain separate explicit approval and apply the backup-first gate in [recovery-policy.md](recovery-policy.md). The work should:
+The owner reports that the official Developer Mode app is installed and enabled, the TV rebooted successfully, SSH pairing completed after separate approval, and the Key Server is now off. The owner reports that the official CLI system-information command succeeded. Both app-list commands returned zero application records, with `--listfull` exiting successfully. The correct classification is **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**. The reason for the empty results has not been established. No complete inventory, configuration export, or restorable system backup exists. See [hardware observations](hardware.md), [runbook](developer-mode-runbook.md), and [recovery policy](recovery-policy.md).
 
-1. Review LG's [official Developer Mode setup and expiry rules](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app) and document expiration behavior.
-2. Prepare a secure Bazzite-to-TV connection using an isolated CLI environment; record credential handling without storing keys or tokens in Git.
-3. Identify the device only after approval, then export a read-only application inventory. State that it may be incomplete and does not establish removability.
-4. Investigate supported configuration export and restoration mechanisms; document unsupported state rather than implying it is backed up.
-5. Document and verify the supported session renewal procedure before any sideloading. Do not assume sideloaded apps persist after session expiry.
+LG's public consumer TV Application Manager reference documents launch and known-ID existence checks but not general enumeration. LG's CLI documentation describes app-list commands but does not establish full catalogue coverage for consumer TVs. LG staff have stated that no general public installed-app listing API is available. The webOS OSE `listApps` API is not evidence of consumer TV support; OSE warns its APIs are not guaranteed compatible with LG products. Community SSAP libraries may list launch points but are not a supported complete inventory. A manually owner-confirmed Apps/Home screen list may supplement visible launch-point observations.
 
-No TV connection or Developer Mode activation is authorized in the current slice. No app install or removal is included in the next discovery milestone. Rooting remains deferred. YouTube AdFree remains unverified on this TV.
+No TV operation is authorized by this implementation plan. Live capture remains a future, separately approved slice, and no live-capture adapter is included in Slice 3A. YouTube AdFree feasibility and its stock-app recovery route remain unresolved; no app install, replacement, or removal is approved. Rooting remains deferred.
 
 ## Milestone 003, Slice 1 — offline tooling foundation
 
@@ -86,13 +82,24 @@ No TV was contacted and no Developer Mode action was taken. There are no restora
 - [x] Documented manual baseline coverage limits, Developer Mode deactivation, reboot and session-expiry consequences, separate approvals, readiness gates, and post-activation comparison.
 - [x] No TV was contacted or changed; no device-facing mutation script was added.
 
+## Milestone 003, Slice 3A — documentation reconciliation and CLI PATH correction
+
+- [x] Updated project status from pre-activation planning to owner-reported activation, pairing, CLI metadata, and empty app-list observations.
+- [x] Kept the distinction between overall normal-operation report and untested individual feature checks.
+- [x] Added project-managed PATH activation for interactive and project-run Distrobox commands without host shell-profile edits.
+- [x] Added offline PATH regression tests; no live-capture adapter or TV operation is included.
+
+## Recommended next step — Milestone 003, Slice 3B
+
+Plan the live-capture adapter against documented CLI behavior, with explicit command/alias allowlisting, private local output, manifest and checksum requirements, and truthful zero-record/coverage states. Resolve whether any supported source can establish more than CLI response coverage. Do not connect to the TV or implement execution until the interface, permissions, privacy handling, coverage, and recovery boundaries are documented and separately approved. If no complete supported inventory interface exists, retain the inventory as partial and supplement only with an owner-confirmed visible-app list.
+
 ## Milestones and acceptance criteria
 
 | Milestone | Scope | Acceptance criteria |
 |---|---|---|
 | 001 — Discovery | Baseline, supported controls, compatibility, read-only inventory plan | Model/firmware and manual settings recorded; research sources current; inventory procedure is read-only |
 | 002 — Native configuration | Owner-reported promotion, recommendation, privacy, startup and Home results; regression validation | Results and observations recorded; app/function tests explicitly marked pending |
-| 003 — Developer Mode discovery | Separately approved setup, secure connection, read-only inventory, configuration export investigation | Expiry/renewal plan documented; inventory coverage limits stated; supportable backup and restore boundaries established; no removability inference |
+| 003 — Developer Mode discovery | Setup and pairing are owner-reported completed; CLI discovery returned zero app records | State the unknown catalogue coverage and reason; preserve expiry/renewal and recovery limits; no removability inference or restorable backup claim |
 | 004 — YouTube AdFree | Separately approved app swap and validation | Sign-in, playback, ad blocking, SponsorBlock, and persistence observed; rollback path ready |
 | 005 — Application review | Individual removable-app decisions | Protected apps excluded; every proposed package individually identified and approved |
 | 006 — Advanced modifications | Reassess rooting only if a substantial need remains | Exact model/firmware support and recovery understood; separate explicit approval obtained |
@@ -113,4 +120,4 @@ No TV was contacted and no Developer Mode action was taken. There are no restora
 - [x] Backups are excluded from Git by default; only `backups/.gitkeep` is committed.
 - [x] Protected-app policy is machine-readable, with no package IDs or removal allowlist.
 - [x] No device-facing inventory, backup, restore, verification, or mutation scripts claim unverified capabilities.
-- [x] Developer Mode discovery scope and prerequisites are documented; no TV connection or activation is authorized here.
+- [x] Developer Mode discovery observations and limits are documented; Slice 3A does not add device-facing execution or authorize further TV operations.

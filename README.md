@@ -4,7 +4,7 @@ A cautious, documented workflow for reducing promotion and clutter on an LG 55UP
 
 ## Current phase
 
-The owner has manually completed native configuration on the LG 55UP81006LR. This repository records those reported results and defines backup-first recovery controls. No project-initiated TV connection or modification, sideloading, DNS change, rooting, or application removal is part of this slice. App launch/playback and protected-function regression checks are still pending.
+The owner has manually completed native configuration on the LG 55UP81006LR and reports that Developer Mode activation, SSH pairing, and read-only CLI system-information retrieval were completed after separate approvals. The app-list commands returned zero records; full catalogue coverage and the cause are unknown. The owner reports normal overall operation, but individual protected-function regression checks remain pending unless separately recorded. This slice adds no TV-facing actions, sideloading, DNS changes, rooting, or application removal.
 
 ## Workflow
 
@@ -13,7 +13,7 @@ The owner has manually completed native configuration on the LG 55UP81006LR. Thi
 3. Require a captured baseline, documented supported recovery, and explicit approval before any future operation.
 4. Use [the rollback notes](docs/rollback.md) if a change causes an unwanted result.
 
-The future Developer Mode inventory is read-only. Application removal is outside this slice and requires a separately approved plan.
+Any future inventory capture must be read-only and separately approved; no live-capture adapter is implemented. Application removal is outside this slice and requires a separately approved plan.
 
 ## Protected functions
 

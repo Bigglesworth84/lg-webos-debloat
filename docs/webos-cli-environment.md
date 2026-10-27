@@ -1,6 +1,6 @@
 # Offline webOS CLI environment
 
-This document describes an isolated workstation environment and offline inventory foundation. It does not authorize a TV connection, Developer Mode activation, SSH pairing, app installation/removal, or restoration.
+This document describes an isolated workstation environment and offline inventory foundation. Developer Mode activation and SSH pairing have since been completed after separate owner approvals. This tooling documentation does not authorize a new TV connection or operation, app installation/removal, or restoration.
 
 ## Compatibility evidence
 
@@ -20,9 +20,16 @@ Prerequisites on the host: Bazzite's rootless Podman and Distrobox. The provided
 scripts/webos-cli-env.sh create
 scripts/webos-cli-env.sh install
 scripts/webos-cli-env.sh shell
+scripts/webos-cli-env.sh run ares --version
 ```
 
 The custom container home defaults to `${XDG_DATA_HOME:-$HOME/.local/share}/lg-webos-cli-home` on the host and is created with mode `0700`. Override it with `WEBOS_CLI_HOME` if needed, keeping it outside the repository. The project is mounted at `/workspace/lg-webos-debloat` read-only. The setup script downloads the official Node binary, verifies it against the matching `SHASUMS256.txt` entry, and installs the exact CLI version in that private home. Package installation and tests do not need a TV.
+
+### Pinned runtime PATH
+
+The installer exports PATH only for its own process. A later login shell can reset it, which caused `node`, `ares`, and `ares-setup-device` to be missing from PATH after entering a fresh Distrobox shell. `scripts/webos-cli-path.sh` now provides a project-managed, idempotent activation function. It checks for the pinned Node 24.22.1 binary and CLI executables, prepends `$HOME/.local/npm/bin` followed by `$HOME/.local/opt/node-v24.22.1/bin`, removes duplicate PATH entries, and preserves other non-empty entries. It fails with an install instruction if an expected executable is absent.
+
+Use `scripts/webos-cli-env.sh shell` for an interactive shell with the environment activated. The project starts a clean interactive Bash without host or container login/profile files, avoiding PATH resets and avoiding profile edits. Use `scripts/webos-cli-env.sh run <command> [args...]` for a project-managed noninteractive workstation command; arguments are passed separately without shell evaluation. **`run` is a general command runner, not a TV read-only command allowlist or an authorization mechanism.** It can invoke any command available in the container. Any future automated TV capture must have a separate explicit command allowlist, safe output handling, and approval gate; this runner does not provide those controls. Both entry points retain the restrictive umask and tighten existing credential directory permissions. They do not add credentials or modify the host user's shell configuration. The helper requires the pinned runtime and CLI to be installed first.
 
 To remove the container, run `scripts/webos-cli-env.sh remove`. This leaves the private home in place so the owner can inspect or securely delete device credentials separately. The command never deletes the private home automatically.
 
@@ -50,7 +57,7 @@ ares-install --device <explicit-alias> --list
 ares-install --device <explicit-alias> --listfull
 ```
 
-`--listfull` is supported by v3.2.6 CLI help. Prefer `--list` unless a documented inventory need requires additional app details. The offline utility has no live-device mode and no arbitrary command argument. App install/removal, launch/termination, shell, session extension, scanning, and TV file transfer are not allowlisted. No restoration operation is implemented.
+`--listfull` is supported by v3.2.6 CLI help. Prefer `--list` unless a documented inventory need requires additional app details. The owner reports that both list commands returned zero app records on the TV, with `--listfull` exit status 0. This is **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**; the reason for the empty results is not established. The offline utility has no live-device mode and no arbitrary command argument. App install/removal, launch/termination, shell, session extension, scanning, and TV file transfer are not allowlisted. No restoration operation is implemented.
 
 The installed v3.2.6 package does not ship an `ares-extend-dev` executable in its published command map; local help and package metadata showed no such command. Do not use or document it for this environment. Future manual session renewal uses the Developer Mode app's **EXTEND** control as described in LG's guide.
 
