@@ -22,6 +22,7 @@ BBC iPlayer, Netflix, Channel 4, Disney+, Emby, Prime Video, and Apple TV are ma
 ## Project documents
 
 - [Hardware and baseline](docs/hardware.md)
+- [Pre-activation baseline and Developer Mode readiness checklist](docs/pre-activation-baseline.md)
 - [Research and sources](docs/research.md)
 - [Compatibility](docs/compatibility.md)
 - [Milestones and acceptance criteria](docs/implementation-plan.md)

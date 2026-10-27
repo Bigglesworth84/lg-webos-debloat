@@ -48,6 +48,8 @@ Firmware 03.53.46 release history says “Fixing minor bugs in software.” The 
 
 ## Manual baseline checklist
 
+For the complete pre-Developer-Mode checklist, per-test result format, networking/Emby checks, and readiness gate, use [pre-activation-baseline.md](pre-activation-baseline.md). The checklist below is the earlier native-configuration record and does not replace that per-port baseline.
+
 Record the date and observed value. Do not include account identifiers, credentials, authentication tokens, serial numbers, or network secrets.
 
 ### Device and settings
