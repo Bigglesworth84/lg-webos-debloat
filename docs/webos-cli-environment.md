@@ -47,9 +47,9 @@ Inspection of the installed v3.2.6 package and its local help behavior establish
 
 These paths were verified by inspecting the official package source and observing CLI-created files in a disposable home. No pairing data or real credentials were used. Keep the entire custom home private, encrypted at rest where available, and outside Git. Never paste profile output, keys, passphrases, or unredacted diagnostics into issues or commits.
 
-## Approved future command vectors
+## Allowlisted inventory commands
 
-The offline foundation builds but never executes these vectors:
+The offline foundation builds these vectors, and the separate live-capture adapter can execute them only after a later explicit owner approval:
 
 ```text
 ares-device --system-info --device <explicit-alias>
@@ -57,13 +57,17 @@ ares-install --device <explicit-alias> --list
 ares-install --device <explicit-alias> --listfull
 ```
 
-`--listfull` is supported by v3.2.6 CLI help. Prefer `--list` unless a documented inventory need requires additional app details. The owner reports that both list commands returned zero app records on the TV, with `--listfull` exit status 0. This is **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**; the reason for the empty results is not established. The offline utility has no live-device mode and no arbitrary command argument. App install/removal, launch/termination, shell, session extension, scanning, and TV file transfer are not allowlisted. No restoration operation is implemented.
+`--listfull` is supported by v3.2.6 CLI help. Prefer `--list` unless a documented inventory need requires additional app details. The owner reports that both list commands returned zero app records on the TV, with `--listfull` exit status 0. This is **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**; the reason for the empty results is not established. The live adapter is `scripts/webos_live_capture.py`; it requires an explicit device alias, one or more explicit `--operation` selections (`metadata`, `applications`, `applications-full`), and an output root. It accepts no command string, executable override, extra CLI flags, or environment override. The host adapter uses the canonical `command_argv()` vectors; the dedicated `capture` action checks the operation, alias, and full vector before entering the container. The general `run` action is not used as an authorization boundary. App install/removal, launch/termination, shell, session extension, scanning, and TV file transfer are not allowlisted. No restoration operation is implemented.
+
+Each operation has a 30-second timeout and a 1 MiB combined stdout/stderr output limit. The host supervisor captures both streams with bounded memory, runs each selected operation once, sends a process-group termination signal on timeout or output overflow, escalates to SIGKILL when needed, and reaps the supervised launcher. Mock tests verify termination when a mocked container command spawns a descendant. Distrobox/container process-tree behavior on the actual host is unverified; Distrobox remains integrated with the host rather than a security boundary.
+
+Live snapshots use schema version 2 and are validated by `scripts/webos_inventory.py validate <snapshot-directory>`. They persist only `modelName`, `sdkVersion`, `firmwareVersion`, `boardType`, and validated application IDs. Raw stdout/stderr and error messages are never persisted. The manifest records safe output presence/size, exit status, operation and parsing outcomes, artifact hashes, tool/runtime versions, and coverage limitations. Empty stdout and empty JSON application collections are separately recorded, but neither establishes a complete installed-app catalogue. Every live capture reports unknown/incomplete inventory coverage and an empty restorable-artifacts list. No live capture has been run against the TV.
 
 The installed v3.2.6 package does not ship an `ares-extend-dev` executable in its published command map; local help and package metadata showed no such command. Do not use or document it for this environment. Future manual session renewal uses the Developer Mode app's **EXTEND** control as described in LG's guide.
 
 ## Offline fixture and snapshot use
 
-The snapshot output root must already be suitable if it exists: owned by the current user, writable/searchable by its owner, and inaccessible to group/other users. The tool rejects permissive roots and symlinked path components without changing existing modes. Create new roots in a trusted local location; snapshot directories are timestamped and private (`0700`) and files are owner-only (`0600`, or stricter under the active umask). The path checks are best-effort against symlink races, so do not let another user or process modify the output path during capture.
+The snapshot output root must already be suitable if it exists: owned by the current user, writable/searchable by its owner, and inaccessible to group/other users. The tool rejects permissive roots and symlinked path components without changing existing modes. Create new roots in a trusted local location; snapshot directories are timestamped and private (`0700`) and files are owner-only (`0600`, or stricter under the active umask). The path checks are best-effort against symlink races, so do not let another user or process modify the output path during capture. Keep snapshots under ignored `backups/` or another private local root; do not sync or publish them automatically.
 
 The checked-in fixtures contain synthetic app IDs and sample metadata, not data from this TV:
 

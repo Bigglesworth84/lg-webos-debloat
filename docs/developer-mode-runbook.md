@@ -31,8 +31,24 @@ The owner reports that the CLI environment uses a private Distrobox home outside
 2. Add the target with an explicit alias, correct observed address, port `9922`, and user `prisoner`, for example `ares-setup-device --add <alias> --info "host=<observed-address>" --info "port=9922" --info "username=prisoner"`. This changes the workstation-side profile only. Keep the profile under the isolated custom home.
 3. After separate pairing approval, retrieve the key with `ares-novacom --getkey --device <alias>` while the owner is present to enter the short-lived passphrase at the interactive prompt. Never put the passphrase in shell history, command arguments, fixtures or logs. Verify that the CLI key is `0600` and profile data is `0600` within owner-only `0700` directories. Treat persistent TV-side key authorization and its revocation as unverified unless LG documents the lifecycle.
 4. The owner reports that `ares-device --system-info --device lounge-tv` succeeded. The owner also reports that `ares-install --device lounge-tv --list` and `--listfull` returned no application records, with `--listfull` exit status 0. Classify this as **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**. Its precise cause has not been established; do not interpret it as an empty catalogue.
-5. Store raw diagnostics in a private local directory separate from any redacted report. Redact serials, IP/MAC addresses, account values, passphrases, tokens, key material, and unrelated personal data before review or sharing.
-6. No live-capture adapter or machine-readable device snapshot was created. A future approved capture must include UTC timestamps, exact tool/runtime versions, coverage gaps, artifact classifications and SHA-256 hashes; label metadata informational and app output read-only; record no restorable TV-state artifacts. Inventory does not establish removability or complete system coverage.
+5. The live adapter does not store raw stdout or stderr. For any separately approved manual diagnostic work, keep raw material private and outside Git; redact serials, IP/MAC addresses, account values, passphrases, tokens, key material, and unrelated personal data before review or sharing.
+6. A controlled live-capture adapter is implemented for offline review, but it has not been run against this TV and no machine-readable live device snapshot was created. Any first capture requires a separate review and explicit owner approval. It records UTC timestamps, tool/runtime versions, operation vectors, coverage gaps, artifact classifications and SHA-256 hashes; persists only the four allowlisted metadata fields and validated application IDs; labels metadata informational and app output read-only; and records no restorable TV-state artifacts. Inventory does not establish removability or complete system coverage.
+
+## Proposed future read-only capture procedure
+
+After the owner explicitly approves a separate capture slice and confirms the target alias, use the pinned CLI environment only. Keep output outside Git in a private, owner-only directory (for example, `$HOME/webos-inventory`, mode `0700`). Select operations explicitly; no operation is selected by default. The adapter executes at most once per selected operation and stops on the first execution failure.
+
+Example command for a later, separately approved run:
+
+```sh
+python3 scripts/webos_live_capture.py \
+  --device-alias lounge-tv \
+  --operation metadata \
+  --operation applications \
+  --output-root "$HOME/webos-inventory"
+```
+
+The command performs device-facing reads. Do not run it without that later approval. It uses a 30-second timeout and 1 MiB combined stdout/stderr limit per operation, saves only allowlisted structured records, and reports the snapshot directory. Validate it with `python3 scripts/webos_inventory.py validate <snapshot-directory>`. A successful empty app response or valid empty JSON array still has unknown/incomplete catalogue coverage. Distrobox descendant termination has only been checked with mocks; container-side process behavior remains unverified. Snapshots are observations, not a restorable TV backup.
 
 ## Session expiry, renewal, and deactivation
 
