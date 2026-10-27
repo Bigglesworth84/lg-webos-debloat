@@ -1,0 +1,3 @@
+# Local device snapshots may contain sensitive configuration metadata.
+/backups/*
+!/backups/.gitkeep

@@ -4,13 +4,13 @@ A cautious, documented workflow for reducing promotion and clutter on an LG 55UP
 
 ## Current phase
 
-Milestone 001, Slice 1 establishes the baseline and documents native settings. No TV connection, configuration changes, sideloading, DNS changes, rooting, or application removal are part of this slice.
+The owner has manually completed native configuration on the LG 55UP81006LR. This repository records those reported results and defines backup-first recovery controls. No project-initiated TV connection or modification, sideloading, DNS change, rooting, or application removal is part of this slice. App launch/playback and protected-function regression checks are still pending.
 
 ## Workflow
 
-1. Read [the baseline and native settings checklist](docs/hardware.md).
-2. Record observations manually; the TV baseline is not yet independently inspected.
-3. Follow [the native optimisation procedure](docs/implementation-plan.md) one setting at a time and record results in the checklist.
+1. Read [the baseline and native settings results](docs/hardware.md).
+2. Read the [recovery policy](docs/recovery-policy.md) before planning state changes or tooling.
+3. Require a captured baseline, documented supported recovery, and explicit approval before any future operation.
 4. Use [the rollback notes](docs/rollback.md) if a change causes an unwanted result.
 
 The future Developer Mode inventory is read-only. Application removal is outside this slice and requires a separately approved plan.
@@ -26,3 +26,5 @@ BBC iPlayer, Netflix, Channel 4, Disney+, Emby, Prime Video, and Apple TV are ma
 - [Compatibility](docs/compatibility.md)
 - [Milestones and acceptance criteria](docs/implementation-plan.md)
 - [Rollback](docs/rollback.md)
+- [Recovery policy and tooling design](docs/recovery-policy.md)
+- [Change log](docs/change-log.md)

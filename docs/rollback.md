@@ -1,6 +1,12 @@
 # Rollback and recovery
 
-This slice changes repository documentation only. No TV setting, firmware, app, or network configuration has been changed.
+The native settings below were configured by the owner. This repository change itself changes documentation only; no TV setting, firmware, app, or network configuration was changed by this project. See [recovery policy](recovery-policy.md) for the mandatory backup-first gate and recovery classification.
+
+## Recovery status for the recorded native settings
+
+These settings have documented on-device controls, so the intended rollback is manual restoration through those settings. The procedure has not been independently performed or verified by this project. Before any future change, capture each current value and establish the exact menu path shown by the TV. Reversing consent choices may require accepting an agreement; review its on-screen terms before doing so.
+
+The Home observations (LG Channels promotional row replaced by TV function shortcuts, introductory banner remaining, protected apps visible) are not backup artefacts and have no separately verified restore function. Revisit the relevant Home and agreement settings to restore the desired state; confirm the result manually.
 
 ## Native settings
 
@@ -16,7 +22,7 @@ After rollback, validate the Home screen, each protected streaming app, Emby loc
 
 ## Firmware
 
-No firmware change is in scope. Firmware release notes currently state that 03.53.46 fixes minor bugs and do not document a rollback or downgrade procedure. Treat firmware changes as non-reversible for planning purposes unless LG documents a model-specific recovery path; do not rely on downgrading.
+No firmware change is in scope. Current firmware 03.53.45 and the displayed 03.53.46 offer are owner-confirmed. Release notes state that 03.53.46 fixes minor bugs and do not document a rollback or downgrade procedure. Treat firmware changes as recovery-unverified for planning purposes unless LG documents and supports a model-specific recovery path; do not rely on downgrading or factory reset.
 
 ## Developer Mode and sideloaded apps
 
