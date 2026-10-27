@@ -2,18 +2,45 @@
 
 ## Device facts
 
-The following starting values were supplied by the owner and have not been read from the television by this project:
+The values in the native optimisation results below were manually inspected and configured by the owner on 27 October 2026. This project did not connect to the television. Other starting values remain owner-reported until manually confirmed.
 
 | Field | Initial value | Status |
 |---|---|---|
-| Model | LG 55UP81006LR, UP81 series | Owner-reported; LG product page confirms model family |
+| Model | LG 55UP81006LR, UP81 series | Owner-confirmed by manual inspection, 27 October 2026 |
 | Model year / platform | 2021 / webOS 6 | Owner-reported; LG identifies the product as a webOS smart TV |
-| webOS TV version | 6.5.3-47 | Owner-reported; manual confirmation pending |
-| Firmware | 03.53.45 | Owner-reported; manual confirmation pending |
-| Available update | 03.53.46 | Owner-reported; LG's current release notes list 03.53.46 for 55UP81006LR |
+| webOS TV version | 6.5.3-47 | Owner-confirmed by manual inspection, 27 October 2026 |
+| Firmware | 03.53.45 | Owner-confirmed by manual inspection, 27 October 2026 |
+| Available update | 03.53.46 | Owner-confirmed as displayed, 27 October 2026; automatic updates disabled |
 | Storage | 2.04 GB total; approximately 0.99 GB available | Owner-reported; manual confirmation pending |
 | Automatic firmware updates | Disabled | Owner-reported; manual confirmation pending |
 | External device | Raspberry Pi 5 running Steam Link, HDMI; Bluetooth controller paired to Pi | Owner-reported; connectivity validation pending |
+
+## Native optimisation results
+
+These settings were manually inspected and configured by the owner on 27 October 2026. The table records reported final states; this project has not independently read them from the TV.
+
+| Setting | Manually confirmed final state |
+|---|---|
+| Power On Screen | Recent Input |
+| Home Promotion | Off |
+| Content Recommendation | Off |
+| Viewing Information Agreement | Disabled |
+| Voice Information Agreement | Disabled |
+| Interest-Based Advertisement Agreement | Declined |
+| Data Partners Agreement | Declined |
+| Marketing Communications Agreement | Declined |
+| CMP advertising consent | Reject All selected and confirmed |
+
+### Observed Home changes
+
+- Disabling Content Recommendation removed the LG Channels promotional programme row; TV function shortcuts appeared in its place.
+- The large webOS introductory banner remains visible.
+- Protected streaming applications remain visible on Home.
+- CMP legitimate-interest processing may remain for some vendors; this is an observation/limitation, not a claim that all tracking stopped.
+
+### Validation status
+
+Application launch and playback have not been formally regression-tested after these settings. HDMI, HDMI-CEC, HDR, Game Mode, audio, network, Bluetooth, and Raspberry Pi Steam Link functions also remain pending explicit validation. The protected-app list is a preservation requirement, not evidence that each app was tested.
 
 LG's product page lists HDR, Simplink (HDMI-CEC), three HDMI inputs, eARC on HDMI 2, Wi-Fi, LAN, and Bluetooth 5.0 for this model. Verify regional hardware options on the TV and its manual. [LG 55UP81006LR specifications](https://www.lg.com/uk/tvs-soundbars/smart-tvs/55up81006lr/)
 

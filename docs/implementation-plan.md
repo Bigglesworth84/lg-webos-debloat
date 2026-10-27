@@ -1,6 +1,12 @@
 # Implementation plan
 
-Native configuration comes before Developer Mode. DNS filtering is deferred until native results are measured. Rooting is not in the current plan.
+Native configuration comes before Developer Mode. The owner reports the initial native configuration complete; application and protected-function regression checks remain pending. DNS filtering is deferred until native results are measured. Rooting is not in the current plan. Every future state change is gated by the [backup and recovery policy](recovery-policy.md).
+
+## Completed native configuration — owner reported
+
+On 27 October 2026, the owner manually inspected and configured the settings recorded in [hardware.md](hardware.md). The owner observed the LG Channels promotional programme row disappear after Content Recommendation was disabled; TV function shortcuts took its place. The introductory banner remained, as did protected app tiles. These are owner observations, not project-side verification. Application launch/playback and HDMI, CEC, HDR, Game Mode, audio, network, Bluetooth, and Steam Link regression checks remain open.
+
+No machine-readable backup was captured. There is no confirmed device-facing backup or restore interface. The current project slice records results and defines the recovery framework; it does not connect to or modify the TV.
 
 ## Native optimisation procedure
 
@@ -56,22 +62,23 @@ Before each change, record the current value and date in [the baseline checklist
 
 ## Future Developer Mode preparation
 
-After the native settings results are reviewed and a separate TV-connection slice is approved:
+The next implementation slice is preparation and read-only discovery only. Before any TV connection or Developer Mode activation, obtain separate explicit approval and apply the backup-first gate in [recovery-policy.md](recovery-policy.md). The work should:
 
-1. Review LG's [Developer Mode setup and expiry rules](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app).
-2. Prepare webOS CLI in an isolated Bazzite environment or use a current [webOS Dev Manager Linux AppImage](https://github.com/webosbrew/dev-manager-desktop/releases).
-3. Pair only on the user's approval, then export an inventory with official read-only CLI list commands. Treat the result as potentially incomplete.
-4. Plan session renewal before installing any sideloaded app; LG says Developer Mode apps are removed when the session expires and Developer Mode disables.
+1. Review LG's [official Developer Mode setup and expiry rules](https://webostv.developer.lge.com/develop/getting-started/developer-mode-app) and document expiration behavior.
+2. Prepare a secure Bazzite-to-TV connection using an isolated CLI environment; record credential handling without storing keys or tokens in Git.
+3. Identify the device only after approval, then export a read-only application inventory. State that it may be incomplete and does not establish removability.
+4. Investigate supported configuration export and restoration mechanisms; document unsupported state rather than implying it is backed up.
+5. Document and verify the supported session renewal procedure before any sideloading. Do not assume sideloaded apps persist after session expiry.
 
-No app install or removal is included in this slice. Rooting remains deferred. YouTube AdFree remains unverified on this TV.
+No TV connection or Developer Mode activation is authorized in the current slice. No app install or removal is included in the next discovery milestone. Rooting remains deferred. YouTube AdFree remains unverified on this TV.
 
 ## Milestones and acceptance criteria
 
 | Milestone | Scope | Acceptance criteria |
 |---|---|---|
 | 001 — Discovery | Baseline, supported controls, compatibility, read-only inventory plan | Model/firmware and manual settings recorded; research sources current; inventory procedure is read-only |
-| 002 — Native configuration | Promotion, recommendation, privacy, startup, Home organization | Each change recorded and reversible; protected apps and input functions validated |
-| 003 — Developer Mode | Approved pairing and inventory | Renewal plan recorded; inventory exported; no removability inference |
+| 002 — Native configuration | Owner-reported promotion, recommendation, privacy, startup and Home results; regression validation | Results and observations recorded; app/function tests explicitly marked pending |
+| 003 — Developer Mode discovery | Separately approved setup, secure connection, read-only inventory, configuration export investigation | Expiry/renewal plan documented; inventory coverage limits stated; supportable backup and restore boundaries established; no removability inference |
 | 004 — YouTube AdFree | Separately approved app swap and validation | Sign-in, playback, ad blocking, SponsorBlock, and persistence observed; rollback path ready |
 | 005 — Application review | Individual removable-app decisions | Protected apps excluded; every proposed package individually identified and approved |
 | 006 — Advanced modifications | Reassess rooting only if a substantial need remains | Exact model/firmware support and recovery understood; separate explicit approval obtained |
@@ -84,3 +91,12 @@ No app install or removal is included in this slice. Rooting remains deferred. Y
 - [x] Protected apps and system components are protected by default; no removal automation exists.
 - [x] Firmware 03.53.46 notes and exact model applicability are recorded with uncertainty stated.
 - [x] No TV connection or configuration change is part of this slice.
+
+## Documentation and recovery slice acceptance
+
+- [x] Backup-first approval gate, recovery classifications, protected state, and safety requirements recorded in `AGENTS.md` and `docs/recovery-policy.md`.
+- [x] Owner-reported native results, observations, and untested functionality distinguished in `docs/hardware.md` and the change log.
+- [x] Backups are excluded from Git by default; only `backups/.gitkeep` is committed.
+- [x] Protected-app policy is machine-readable, with no package IDs or removal allowlist.
+- [x] No device-facing inventory, backup, restore, verification, or mutation scripts claim unverified capabilities.
+- [x] Developer Mode discovery scope and prerequisites are documented; no TV connection or activation is authorized here.

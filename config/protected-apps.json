@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "policy": "preserve",
+  "protected_applications": [
+    "BBC iPlayer",
+    "Netflix",
+    "Channel 4",
+    "Disney+",
+    "Emby",
+    "Prime Video",
+    "Apple TV"
+  ],
+  "default_protection": {
+    "unknown_applications": true,
+    "webos_system_components": true
+  },
+  "proposed_replacement": {
+    "application": "YouTube",
+    "approval_required": true,
+    "package_id": null
+  },
+  "removal_allowlist": [],
+  "note": "Display names are preservation policy only, not package identifiers or evidence of removability. No removal is approved."
+}
