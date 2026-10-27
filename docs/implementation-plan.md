@@ -78,6 +78,14 @@ The offline tooling foundation is implemented on branch `codex/m003-offline-inve
 
 No TV was contacted and no Developer Mode action was taken. There are no restorable TV-state artifacts. CLI version/help commands were run in the Distrobox under Node 24.22.1; a no-device CLI help smoke test also passed under Node 22.23.4. See [offline environment notes](webos-cli-environment.md) and the [future manual runbook](developer-mode-runbook.md).
 
+## Milestone 003, Slice 2 — pre-activation baseline preparation
+
+- [x] Added a manual baseline for HDMI 1, HDMI 2, and HDMI 3 independently, gaming, input switching, Game Mode/ALLM/HDR/CEC, audio/ARC/eARC, networking, Emby, protected streaming apps, Bluetooth, and Steam Link.
+- [x] Added a repeatable result format with every new test initially **Not tested** and no hardware or app result claimed as passing.
+- [x] Recorded previously confirmed privacy/advertising values as reference only; the checklist directs the owner to recheck them without changing them.
+- [x] Documented manual baseline coverage limits, Developer Mode deactivation, reboot and session-expiry consequences, separate approvals, readiness gates, and post-activation comparison.
+- [x] No TV was contacted or changed; no device-facing mutation script was added.
+
 ## Milestones and acceptance criteria
 
 | Milestone | Scope | Acceptance criteria |

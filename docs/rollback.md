@@ -8,6 +8,12 @@ These settings have documented on-device controls, so the intended rollback is m
 
 The Home observations (LG Channels promotional row replaced by TV function shortcuts, introductory banner remaining, protected apps visible) are not backup artefacts and have no separately verified restore function. Revisit the relevant Home and agreement settings to restore the desired state; confirm the result manually.
 
+## Pre-activation baseline and recovery limits
+
+Complete [the pre-activation baseline](pre-activation-baseline.md) manually with the owner before Developer Mode installation, activation, or pairing. It needs no computer connection to the TV and captures current behavior for HDMI 1, HDMI 2, HDMI 3, gaming, audio, network, Emby, protected apps, and the existing privacy/advertising settings. It is a dated observation record, not a backup or restore point. It cannot recover settings, app-private data, account state, or a complete system image. No supported general TV restore interface is established, and the offline app inventory is not a full-system backup.
+
+An activation or pairing regression must halt further device changes. Compare each post-activation result with the dated baseline and investigate before doing anything else. Keep baseline notes free of passwords, tokens, serial numbers, account details, public IP addresses, MAC addresses, and network credentials.
+
 ## Native settings
 
 Record each original value before changing it. To reverse a native optimization, return to the same menu and restore that value:
@@ -26,7 +32,11 @@ No firmware change is in scope. Current firmware 03.53.45 and the displayed 03.5
 
 ## Developer Mode and sideloaded apps
 
-No pairing or sideloading is in scope. LG states Developer Mode expires and apps installed through Developer Mode are uninstalled when the session disables. Before a future install, document how to renew the session and reinstall the app. Preserve official app reinstall instructions before replacing an app. Reinstalling does not guarantee restoration of app-local data.
+No pairing or sideloading is in scope. Installing the Developer Mode app changes installed-app state; its removal/reinstall recovery is unverified for this exact model. Enabling Developer Mode reboots the TV and is **partially reversible** through the Developer Mode app's status control, but deactivation or expiry can uninstall sideloaded apps. Recovery of sideloaded app-local data is **recovery unverified / irreversible** absent evidence. SSH pairing writes local profile/key material and may persist TV-side authorization; until a supported revocation route is established, classify that effect as **recovery unverified / irreversible**. These are separate state changes, each requiring separate explicit approval after the current baseline and consequences are presented.
+
+For an approved deactivation, first record Developer Mode status and session time. On the TV, open the Developer Mode app, read its current warning, and use its Dev Mode Status control only after explicit approval of any stated app/data loss. Confirm ordinary startup and disabled status, then repeat all applicable checks in [pre-activation-baseline.md](pre-activation-baseline.md): each used HDMI port, gaming, picture/audio, switching, Game Mode/ALLM/HDR/CEC where supported, ARC/eARC where used, network, Emby, and all protected streaming apps. Record the result and stop further device changes if an established feature fails. LG documents expiry/disable behavior; verify the exact consequences shown by the TV before intentional deactivation. No known route restores sideloaded app-local data after Developer Mode disables.
+
+Before any future sideloading, document and validate the Developer Mode renewal procedure and potential app reinstall requirements. Reinstallation does not guarantee restoration of app-local data. Do not rely on factory reset or firmware downgrade as recovery.
 
 ## Application removal
 
