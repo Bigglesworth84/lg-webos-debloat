@@ -96,11 +96,14 @@ def parse_device_metadata(text: str) -> tuple[dict[str, str], list[str]]:
     return found, missing
 
 
-def parse_applications(text: str) -> tuple[list[dict[str, Any]], str]:
-    """Parse JSON or a conservative line/table representation; preserve unknown output as opaque."""
+def parse_applications(text: str) -> tuple[list[dict[str, Any]], str, dict[str, int | None]]:
+    """Parse app records and return their status and determinable record counts.
+
+    Returned records are observations only; this parser never infers removability.
+    """
     stripped = text.strip()
     if not stripped:
-        return [], "unexpected"
+        return [], "unexpected", {"accepted": 0, "rejected": 0, "total": None}
     try:
         decoded = json.loads(stripped)
     except json.JSONDecodeError:
@@ -115,16 +118,39 @@ def parse_applications(text: str) -> tuple[list[dict[str, Any]], str]:
         items = None
     if items is not None:
         clean: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        rejected = 0
         for item in items:
             if isinstance(item, str):
-                clean.append({"id": redact_text(item)})
+                app_id = item.strip()
+                sanitized = {"id": redact_text(app_id)}
             elif isinstance(item, dict):
                 sanitized = redact_value(item)
-                if any(k in sanitized for k in ("id", "appId", "app_id")):
-                    clean.append(sanitized)
-        return clean, "parsed" if clean or not items else "partial"
+                sanitized = {k: v for k, v in sanitized.items() if not re.search(r"remove|uninstall", str(k), re.IGNORECASE)}
+                app_id = next((sanitized.get(k) for k in ("id", "appId", "app_id") if k in sanitized), None)
+            else:
+                rejected += 1
+                continue
+            if not isinstance(app_id, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{1,127}", app_id):
+                rejected += 1
+                continue
+            if app_id in seen:
+                rejected += 1
+                continue
+            seen.add(app_id)
+            clean.append(sanitized)
+        return clean, "partial" if rejected else "parsed", {
+            "accepted": len(clean), "rejected": rejected, "total": len(items)
+        }
+
+    # A JSON-looking response that failed to decode must not be reinterpreted as
+    # a loose table; malformed/truncated JSON has no trustworthy record count.
+    if stripped.startswith(("[", "{")):
+        return [], "unexpected", {"accepted": 0, "rejected": 0, "total": None}
 
     rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    rejected = 0
     for line in stripped.splitlines():
         row = line.strip()
         if not row or set(row) <= set("-+| "):
@@ -133,8 +159,18 @@ def parse_applications(text: str) -> tuple[list[dict[str, Any]], str]:
             continue
         candidate = re.split(r"\s{2,}|\|", row)[0].strip()
         if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{1,127}", candidate) and "." in candidate:
-            rows.append({"id": candidate})
-    return rows, "parsed" if rows else "unexpected"
+            if candidate in seen:
+                rejected += 1
+            else:
+                seen.add(candidate)
+                rows.append({"id": candidate})
+        else:
+            rejected += 1
+    # Text tables have no reliable declared total; count only record-like lines.
+    total = len(rows) + rejected
+    return rows, ("partial" if rows and rejected else "parsed" if rows else "unexpected"), {
+        "accepted": len(rows), "rejected": rejected, "total": total if total else None
+    }
 
 
 def sha256_file(path: Path) -> str:
@@ -147,7 +183,24 @@ def sha256_file(path: Path) -> str:
 
 def secure_directory(path: Path) -> None:
     path.mkdir(mode=0o700, parents=True, exist_ok=False)
-    path.chmod(0o700)
+
+
+def prepare_output_root(path: Path) -> None:
+    """Create or validate a private, owner-controlled root without chmodding it."""
+    absolute = path.absolute()
+    current = Path(absolute.anchor)
+    for part in absolute.parts[1:]:
+        current = current / part
+        if current.is_symlink():
+            raise InventoryError("Snapshot output path must not contain symbolic links.")
+    if not absolute.exists():
+        absolute.mkdir(mode=0o700, parents=True, exist_ok=False)
+    if absolute.is_symlink() or not absolute.is_dir():
+        raise InventoryError("Snapshot output root must be a regular directory.")
+    info = absolute.stat()
+    mode = info.st_mode & 0o777
+    if info.st_uid != os.getuid() or mode & 0o077 or mode & 0o300 != 0o300:
+        raise InventoryError("Snapshot output root must be owned by the current user, owner-writable, and private (no group/other access).")
 
 
 def secure_write(path: Path, data: bytes) -> None:
@@ -166,7 +219,6 @@ def secure_write(path: Path, data: bytes) -> None:
         except OSError:
             pass
         raise
-    path.chmod(0o600)
 
 
 def serialize_json(value: Any) -> bytes:
@@ -192,17 +244,12 @@ def create_fixture_snapshot(
         raise InventoryError("Capture timestamp is not a valid UTC date/time.") from exc
     if not cli_version.strip() or not runtime_version.strip():
         raise InventoryError("CLI and runtime versions are required.")
-    if output_root.is_symlink():
-        raise InventoryError("Snapshot output root must not be a symbolic link.")
-    output_root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    if not output_root.is_dir():
-        raise InventoryError("Snapshot output root must be a directory.")
-    output_root.chmod(0o700)
+    prepare_output_root(output_root)
     snapshot = output_root / stamp.replace(":", "-")
     secure_directory(snapshot)
 
     metadata, missing_fields = parse_device_metadata(metadata_text or "")
-    applications, app_status = parse_applications(apps_text or "")
+    applications, app_status, app_counts = parse_applications(apps_text or "")
     artifacts: dict[str, dict[str, Any]] = {}
 
     metadata_bytes = serialize_json({"fields": metadata, "missing_fields": missing_fields})
@@ -217,7 +264,7 @@ def create_fixture_snapshot(
         "size_bytes": len(metadata_bytes),
     }
 
-    apps_bytes = serialize_json({"applications": applications, "parse_status": app_status})
+    apps_bytes = serialize_json({"applications": applications, "parse_status": app_status, "record_counts": app_counts})
     secure_write(snapshot / "applications.json", apps_bytes)
     artifacts["applications.json"] = {
         "type": "read-only observation",
@@ -237,7 +284,7 @@ def create_fixture_snapshot(
         "capture_timestamp_utc": stamp,
         "capture_mode": "offline-fixture",
         "device_alias": alias,
-        "device_identity": {"model": metadata.get("modelName"), "firmware": metadata.get("firmwareVersion")},
+        "device_identity": {"cli_model_name": metadata.get("modelName"), "cli_firmware_version": metadata.get("firmwareVersion")},
         "tool": {"name": TOOL_NAME, "version": TOOL_VERSION, "cli_version": cli_version.strip()},
         "runtime": {"node_version": runtime_version.strip()},
         "capture_status": "partial" if partial else "complete",
@@ -268,12 +315,69 @@ def validate_snapshot(snapshot: Path) -> list[str]:
     if not isinstance(manifest, dict):
         raise InventoryError("Snapshot manifest must be a JSON object.")
     if manifest.get("schema_version") != 1:
-        problems.append("unsupported manifest schema")
+        return ["unsupported manifest schema"]
+    required_fields = {
+        "schema_version", "capture_timestamp_utc", "capture_mode", "device_alias",
+        "device_identity", "tool", "runtime", "capture_status", "coverage_limitations",
+        "restorable_artifacts", "recovery_classification", "artifacts",
+    }
+    missing_fields = required_fields - manifest.keys()
+    if missing_fields:
+        problems.append(f"missing required manifest fields: {', '.join(sorted(missing_fields))}")
+    unexpected_fields = manifest.keys() - required_fields
+    if unexpected_fields:
+        problems.append(f"unsupported manifest fields: {', '.join(sorted(unexpected_fields))}")
+    if manifest.get("capture_mode") != "offline-fixture":
+        problems.append("unsupported capture mode")
+    if manifest.get("capture_status") not in {"complete", "partial"}:
+        problems.append("invalid capture status")
+    stamp = manifest.get("capture_timestamp_utc")
+    if not isinstance(stamp, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", stamp):
+        problems.append("invalid capture timestamp")
+    else:
+        try:
+            datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            problems.append("invalid capture timestamp")
+    try:
+        validate_alias(manifest.get("device_alias"))
+    except (InventoryError, TypeError):
+        problems.append("invalid device alias")
+    if manifest.get("device_identity") is not None and (
+        not isinstance(manifest.get("device_identity"), dict)
+        or set(manifest["device_identity"]) != {"cli_model_name", "cli_firmware_version"}
+        or not all(value is None or isinstance(value, str) for value in manifest["device_identity"].values())
+    ):
+        problems.append("invalid device identity fields")
+    tool = manifest.get("tool")
+    runtime = manifest.get("runtime")
+    if not isinstance(tool, dict) or set(tool) != {"name", "version", "cli_version"} or not all(isinstance(value, str) and value for value in tool.values()):
+        problems.append("invalid tool fields")
+    if not isinstance(runtime, dict) or set(runtime) != {"node_version"} or not isinstance(runtime.get("node_version"), str) or not runtime["node_version"]:
+        problems.append("invalid runtime fields")
+    if not isinstance(manifest.get("device_identity"), dict):
+        problems.append("invalid device identity, tool, or runtime fields")
+    if not isinstance(manifest.get("coverage_limitations"), list) or not all(isinstance(x, str) for x in manifest.get("coverage_limitations", [])):
+        problems.append("invalid coverage limitations")
+    if manifest.get("recovery_classification") != RESTORE_CLASSIFICATION:
+        problems.append("unsupported recovery classification")
     if manifest.get("restorable_artifacts") != []:
         problems.append("manifest claims unverified restorable artifacts")
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, dict):
-        raise InventoryError("Manifest artifacts must be an object.")
+        return problems + ["manifest artifacts must be an object"]
+    required_artifacts = {"device-metadata.json", "applications.json"}
+    declared = set(artifacts)
+    if not required_artifacts <= declared:
+        problems.append(f"missing required artifact declarations: {', '.join(sorted(required_artifacts - declared))}")
+    if declared - required_artifacts:
+        problems.append(f"unexpected artifact declarations: {', '.join(sorted(str(x) for x in declared - required_artifacts))}")
+    expected_types = {"device-metadata.json": "informational metadata", "applications.json": "read-only observation"}
+    expected_capture_statuses = {
+        "device-metadata.json": {"complete", "partial", "unavailable"},
+        "applications.json": {"parsed", "partial", "unexpected", "unavailable"},
+    }
+    artifact_statuses: dict[str, Any] = {}
     for name, record in artifacts.items():
         if not isinstance(name, str) or Path(name).name != name or name in ("", ".", ".."):
             problems.append(f"unsafe artifact path: {name!r}")
@@ -281,24 +385,55 @@ def validate_snapshot(snapshot: Path) -> list[str]:
         if not isinstance(record, dict):
             problems.append(f"invalid artifact record: {name}")
             continue
-        if record.get("type") not in {"read-only observation", "informational metadata", "supported restorable backup"}:
+        if record.get("type") != expected_types.get(name):
             problems.append(f"unsupported artifact type: {name}")
-        if record.get("type") == "supported restorable backup":
-            problems.append(f"unsupported restore request/artifact claim: {name}")
+        record_fields = {"type", "capture_status", "coverage_limitations", "recovery_classification", "sha256", "size_bytes"}
+        if set(record) != record_fields:
+            problems.append(f"invalid artifact fields: {name}")
+        if record.get("recovery_classification") != RESTORE_CLASSIFICATION:
+            problems.append(f"unsupported artifact recovery classification: {name}")
+        if record.get("capture_status") not in {"complete", "partial", "unexpected", "unavailable", "parsed"}:
+            problems.append(f"invalid artifact capture status: {name}")
+        if record.get("capture_status") not in expected_capture_statuses.get(name, set()):
+            problems.append(f"unsupported artifact capture status: {name}")
+        artifact_statuses[name] = record.get("capture_status")
+        if not isinstance(record.get("coverage_limitations"), list) or not all(isinstance(x, str) for x in record.get("coverage_limitations", [])):
+            problems.append(f"invalid artifact coverage limitations: {name}")
+        checksum = record.get("sha256")
+        size_bytes = record.get("size_bytes")
+        if not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+            problems.append(f"invalid checksum declaration: {name}")
+        if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes < 0:
+            problems.append(f"invalid file size declaration: {name}")
         path = snapshot / name
         try:
             if path.is_symlink() or not path.is_file():
                 problems.append(f"artifact missing or not a regular file: {name}")
                 continue
             actual = sha256_file(path)
-            if actual != record.get("sha256"):
+            if isinstance(checksum, str) and actual != checksum:
                 problems.append(f"checksum mismatch: {name}")
-            if path.stat().st_mode & 0o077:
+            if isinstance(size_bytes, int) and path.stat().st_size != size_bytes:
+                problems.append(f"file size mismatch: {name}")
+            if path.stat().st_mode & 0o177:
                 problems.append(f"artifact permissions are broader than 0600: {name}")
         except OSError as exc:
             problems.append(f"cannot inspect artifact {name}: {exc}")
+    if manifest.get("capture_status") == "complete" and artifact_statuses != {
+        "device-metadata.json": "complete", "applications.json": "parsed"
+    }:
+        problems.append("complete manifest has incomplete or unavailable artifacts")
+    expected_files = required_artifacts | {"manifest.json"}
     try:
-        if manifest_path.stat().st_mode & 0o077:
+        present = {entry.name for entry in snapshot.iterdir()}
+        if present - expected_files:
+            problems.append(f"unexpected snapshot files: {', '.join(sorted(present - expected_files))}")
+        if expected_files - present:
+            problems.append(f"missing snapshot files: {', '.join(sorted(expected_files - present))}")
+    except OSError as exc:
+        problems.append(f"cannot inspect snapshot directory: {exc}")
+    try:
+        if manifest_path.stat().st_mode & 0o177:
             problems.append("manifest permissions are broader than 0600")
     except OSError as exc:
         problems.append(f"cannot inspect manifest permissions: {exc}")

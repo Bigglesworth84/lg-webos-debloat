@@ -56,6 +56,8 @@ The installed v3.2.6 package does not ship an `ares-extend-dev` executable in it
 
 ## Offline fixture and snapshot use
 
+The snapshot output root must already be suitable if it exists: owned by the current user, writable/searchable by its owner, and inaccessible to group/other users. The tool rejects permissive roots and symlinked path components without changing existing modes. Create new roots in a trusted local location; snapshot directories are timestamped and private (`0700`) and files are owner-only (`0600`, or stricter under the active umask). The path checks are best-effort against symlink races, so do not let another user or process modify the output path during capture.
+
 The checked-in fixtures contain synthetic app IDs and sample metadata, not data from this TV:
 
 ```sh
@@ -73,4 +75,8 @@ Validate the resulting snapshot with:
 python3 scripts/webos_inventory.py validate backups/<timestamp>
 ```
 
-Fixture snapshots are explicitly labeled `offline-fixture`; they prove only parser and manifest behavior. Snapshots use private modes, record SHA-256 for each artifact, report incomplete fields/output, and claim no restorable artifacts. A valid checksum proves byte integrity only, not completeness, authenticity, device compatibility, or restorability.
+Fixture snapshots are explicitly labeled `offline-fixture`; they prove only parser and manifest behavior. Snapshots require metadata and application artifact declarations, validate their types, sizes, checksums and files, report incomplete fields/output, and claim no restorable artifacts. Application parsing records accepted, rejected and total counts when determinable; malformed or dropped records make the result partial, while an empty JSON array is a complete empty list. A valid checksum proves byte integrity only, not completeness, authenticity, device compatibility, or restorability.
+
+Redaction is best-effort, not a guarantee that arbitrary input is free of sensitive information. Unknown raw output is not automatically safe to publish and is not saved by fixture capture. Any future raw diagnostics must remain separate in a private owner-only location; only a separately reviewed redacted copy may be considered for sharing. The parser does not infer removability and drops removal/uninstall-related fields if they appear in input.
+
+CLI `modelName` is recorded as a CLI-reported metadata value (`cli_model_name`), not as the exact physical LG product model. The target LG 55UP81006LR is identified in project hardware notes from owner observation. Independent hardware identity verification is not provided by the CLI field or this offline tool.

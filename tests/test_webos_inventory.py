@@ -34,22 +34,53 @@ class InventoryParsingTests(unittest.TestCase):
         self.assertEqual(parse_device_metadata("permission denied\n"), ({}, list(("modelName", "sdkVersion", "firmwareVersion", "boardType", "otaId"))))
 
     def test_parses_json_application_output(self):
-        apps, status = parse_applications('[{"id":"com.example.app","title":"Demo"}]')
+        apps, status, counts = parse_applications('[{"id":"com.example.app","title":"Demo"}]')
         self.assertEqual(status, "parsed")
         self.assertEqual(apps[0]["id"], "com.example.app")
+        self.assertEqual(counts, {"accepted": 1, "rejected": 0, "total": 1})
+
+    def test_mixed_valid_and_invalid_json_records_are_partial(self):
+        apps, status, counts = parse_applications('[{"id":"com.example.good"},{"title":"missing id"},null]')
+        self.assertEqual(status, "partial")
+        self.assertEqual([item["id"] for item in apps], ["com.example.good"])
+        self.assertEqual(counts, {"accepted": 1, "rejected": 2, "total": 3})
+
+    def test_empty_json_array_is_a_complete_empty_inventory(self):
+        self.assertEqual(parse_applications("[]"), ([], "parsed", {"accepted": 0, "rejected": 0, "total": 0}))
+
+    def test_unsupported_json_structure_is_unexpected(self):
+        self.assertEqual(parse_applications('{"result":[]}'), ([], "unexpected", {"accepted": 0, "rejected": 0, "total": None}))
+
+    def test_duplicate_json_application_ids_are_rejected(self):
+        apps, status, counts = parse_applications('[{"id":"com.example.app"},{"id":"com.example.app"}]')
+        self.assertEqual(len(apps), 1)
+        self.assertEqual(status, "partial")
+        self.assertEqual(counts, {"accepted": 1, "rejected": 1, "total": 2})
+
+    def test_unexpected_text_and_truncated_json_are_not_parsed_as_records(self):
+        self.assertEqual(parse_applications("permission denied"), ([], "unexpected", {"accepted": 0, "rejected": 1, "total": 1}))
+        self.assertEqual(parse_applications('[{"id":"com.example.app"}'), ([], "unexpected", {"accepted": 0, "rejected": 0, "total": None}))
 
     def test_parses_simple_application_id_rows(self):
-        apps, status = parse_applications("ID\n-------------------\ncom.example.app\n")
+        apps, status, counts = parse_applications("ID\n-------------------\ncom.example.app\n")
         self.assertEqual(status, "parsed")
         self.assertEqual(apps, [{"id": "com.example.app"}])
+        self.assertEqual(counts["accepted"], 1)
+
+    def test_duplicate_text_application_ids_are_rejected(self):
+        apps, status, counts = parse_applications("com.example.app\ncom.example.app\n")
+        self.assertEqual(apps, [{"id": "com.example.app"}])
+        self.assertEqual(status, "partial")
+        self.assertEqual(counts, {"accepted": 1, "rejected": 1, "total": 2})
 
     def test_unrecognized_application_output_is_marked_unexpected(self):
-        self.assertEqual(parse_applications("permission denied"), ([], "unexpected"))
+        self.assertEqual(parse_applications("permission denied")[1], "unexpected")
 
     def test_redacts_sensitive_named_fields_and_key_value_text(self):
-        clean = redact_value({"modelName": "WEBOS6.0", "serialNumber": "secret-serial", "nested": "token: abc"})
+        clean = redact_value({"modelName": "WEBOS6.0", "serialNumber": "secret-serial", "nested": {"auth": {"accessToken": "abc", "note": "token: xyz"}}})
         self.assertEqual(clean["serialNumber"], "[REDACTED]")
-        self.assertEqual(clean["nested"], "token: [REDACTED]")
+        self.assertEqual(clean["nested"]["auth"]["accessToken"], "[REDACTED]")
+        self.assertEqual(clean["nested"]["auth"]["note"], "token: [REDACTED]")
 
 
 class CommandPolicyTests(unittest.TestCase):
@@ -92,6 +123,8 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(manifest["restorable_artifacts"], [])
         self.assertEqual(manifest["artifacts"]["applications.json"]["type"], "read-only observation")
         self.assertEqual(manifest["artifacts"]["device-metadata.json"]["type"], "informational metadata")
+        self.assertEqual(manifest["device_identity"]["cli_model_name"], "WEBOS6.0")
+        self.assertNotIn("model", manifest["device_identity"])
         self.assertEqual(validate_snapshot(snapshot), [])
         self.assertEqual(stat.S_IMODE(snapshot.stat().st_mode), 0o700)
         for path in snapshot.iterdir():
@@ -122,6 +155,63 @@ class SnapshotTests(unittest.TestCase):
         (snapshot / "applications.json").write_text("tampered\n")
         self.assertIn("checksum mismatch: applications.json", validate_snapshot(snapshot))
 
+    def test_size_mismatch_and_missing_required_artifacts_are_detected(self):
+        snapshot = self.make_snapshot()
+        manifest_path = snapshot / "manifest.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["artifacts"]["applications.json"]["size_bytes"] += 1
+        manifest_path.write_text(json.dumps(manifest))
+        os.chmod(manifest_path, 0o600)
+        self.assertIn("file size mismatch: applications.json", validate_snapshot(snapshot))
+        manifest["artifacts"] = {}
+        manifest_path.write_text(json.dumps(manifest))
+        os.chmod(manifest_path, 0o600)
+        issues = validate_snapshot(snapshot)
+        self.assertTrue(any("missing required artifact declarations" in issue for issue in issues))
+
+    def test_missing_artifact_and_unexpected_artifact_are_detected(self):
+        snapshot = self.make_snapshot()
+        (snapshot / "applications.json").unlink()
+        self.assertTrue(any("artifact missing" in issue for issue in validate_snapshot(snapshot)))
+        (snapshot / "applications.json").write_text("{}\n")
+        os.chmod(snapshot / "applications.json", 0o600)
+        (snapshot / "surprise.txt").write_text("x")
+        self.assertTrue(any("unexpected snapshot files" in issue for issue in validate_snapshot(snapshot)))
+
+    def test_unsupported_schema_fails_closed(self):
+        snapshot = self.make_snapshot()
+        path = snapshot / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["schema_version"] = 99
+        path.write_text(json.dumps(manifest))
+        os.chmod(path, 0o600)
+        self.assertEqual(validate_snapshot(snapshot), ["unsupported manifest schema"])
+
+    def test_artifact_cannot_claim_restorable_state(self):
+        snapshot = self.make_snapshot()
+        path = snapshot / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["artifacts"]["applications.json"]["type"] = "supported restorable backup"
+        path.write_text(json.dumps(manifest))
+        os.chmod(path, 0o600)
+        self.assertTrue(any("unsupported artifact type" in issue for issue in validate_snapshot(snapshot)))
+
+    def test_unknown_manifest_fields_fail_closed(self):
+        snapshot = self.make_snapshot()
+        path = snapshot / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["restore_state"] = True
+        path.write_text(json.dumps(manifest))
+        os.chmod(path, 0o600)
+        self.assertTrue(any("unsupported manifest fields" in issue for issue in validate_snapshot(snapshot)))
+
+    def test_unknown_raw_application_output_is_not_included_in_snapshot(self):
+        secret_text = "permission denied: password=do-not-publish"
+        snapshot = create_fixture_snapshot(
+            self.root / "unknown", "tv", "", secret_text, "3.2.6", "v24.11.1", "2026-10-27T12:00:00Z"
+        )
+        self.assertNotIn("do-not-publish", "".join(path.read_text() for path in snapshot.iterdir()))
+
     def test_unexpected_restore_claim_is_rejected(self):
         snapshot = self.make_snapshot()
         manifest_path = snapshot / "manifest.json"
@@ -148,6 +238,30 @@ class SnapshotTests(unittest.TestCase):
         manifest_path.symlink_to(outside)
         with self.assertRaises(InventoryError):
             validate_snapshot(snapshot)
+
+    def test_output_root_permissions_are_preserved_and_unsafe_roots_rejected(self):
+        private_root = self.root / "private-root"
+        private_root.mkdir(mode=0o750)
+        os.chmod(private_root, 0o750)
+        with self.assertRaises(InventoryError):
+            create_fixture_snapshot(private_root, "tv", "", "[]", "3.2.6", "v24", "2026-10-27T12:00:00Z")
+        self.assertEqual(stat.S_IMODE(private_root.stat().st_mode), 0o750)
+        safe_root = self.root / "safe-root"
+        safe_root.mkdir(mode=0o700)
+        os.chmod(safe_root, 0o700)
+        create_fixture_snapshot(safe_root, "tv", "", "[]", "3.2.6", "v24", "2026-10-27T12:00:00Z")
+        self.assertEqual(stat.S_IMODE(safe_root.stat().st_mode), 0o700)
+
+    def test_symlinked_output_root_and_parent_are_rejected(self):
+        real = self.root / "real"
+        real.mkdir(mode=0o700)
+        link = self.root / "link"
+        link.symlink_to(real, target_is_directory=True)
+        with self.assertRaises(InventoryError):
+            create_fixture_snapshot(link, "tv", "", "[]", "3.2.6", "v24", "2026-10-27T12:00:00Z")
+        nested = self.root / "link" / "nested"
+        with self.assertRaises(InventoryError):
+            create_fixture_snapshot(nested, "tv", "", "[]", "3.2.6", "v24", "2026-10-27T12:00:00Z")
 
     def test_non_object_manifest_is_rejected(self):
         snapshot = self.make_snapshot()
