@@ -2,18 +2,42 @@
 
 ## Device facts
 
-The values in the native optimisation results below were manually inspected and configured by the owner on 27 October 2026. This project did not connect to the television. Other starting values remain owner-reported until manually confirmed.
+The device and activation facts below were confirmed by the owner on 27 October 2026. The project connected using the official webOS CLI after separate owner approval. CLI values are recorded separately from the owner's physical-device observations. This does not mean the project independently tested every TV function.
 
 | Field | Initial value | Status |
 |---|---|---|
 | Model | LG 55UP81006LR, UP81 series | Owner-confirmed by manual inspection, 27 October 2026 |
 | Model year / platform | 2021 / webOS 6 | Owner-reported; LG identifies the product as a webOS smart TV |
 | webOS TV version | 6.5.3-47 | Owner-confirmed by manual inspection, 27 October 2026 |
+| webOS release codename | kisscurl-koli | Owner-confirmed, 27 October 2026 |
 | Firmware | 03.53.45 | Owner-confirmed by manual inspection, 27 October 2026 |
+| Developer Mode | Enabled using the official Developer Mode app; TV rebooted successfully | Owner-confirmed after separate approval, 27 October 2026 |
+| Developer Mode Key Server | Off after SSH pairing | Owner-confirmed, 27 October 2026 |
+| Network | Wi-Fi; local-network connectivity confirmed | Owner-confirmed, 27 October 2026 |
 | Available update | 03.53.46 | Owner-confirmed as displayed, 27 October 2026; automatic updates disabled |
 | Storage | 2.04 GB total; approximately 0.99 GB available | Owner-reported; manual confirmation pending |
 | Automatic firmware updates | Disabled | Owner-reported; manual confirmation pending |
 | External device | Raspberry Pi 5 running Steam Link, HDMI; Bluetooth controller paired to Pi | Owner-reported; connectivity validation pending |
+
+## Developer Mode discovery observations
+
+The owner reports that SSH pairing completed and that `ares-device --system-info --device lounge-tv` succeeded. The CLI returned `modelName: 55UP81006LR`, `sdkVersion: 6.5.3`, `firmwareVersion: 03.53.45`, and `boardType: K7LP_DVB_EU`. These are CLI observations; they supplement but do not replace the owner's manual confirmation of the physical set and firmware.
+
+The owner reports that `ares-install --device lounge-tv --list` and `--listfull` returned no application records; `--listfull` exited with status 0. Record this as **successful CLI execution; zero application records returned; full installed-app catalogue coverage unknown**. The precise cause is not established. It does not show that no apps are installed or that built-in or LG Store apps are absent. No application was sideloaded, replaced, or removed through this project, and no complete system backup was captured.
+
+LG's public consumer-TV Application Manager reference documents launching an app by known ID and checking a known ID's installation status, not enumerating all installed apps. LG staff stated that a general public installed-app listing API was unavailable and app IDs were generally not public. The similarly named webOS OSE `listApps` API is not evidence of consumer-TV support; OSE warns that its APIs are not guaranteed compatible with LG TVs. Community SSAP libraries may report launch points, but they are not a supported or complete system-package inventory. See [recovery policy](recovery-policy.md) and [LG's Application Manager reference](https://webostv.developer.lge.com/develop/references/application-manager), [LG's forum response](https://forum.webostv.developer.lge.com/t/how-to-get-applist/8616), and [webOS OSE compatibility note](https://www.webosose.org/docs/reference/).
+
+## Owner-confirmed connections and operation after activation
+
+| Connection | Owner-confirmed configuration | Validation status |
+|---|---|---|
+| HDMI 1 | Nintendo Switch or Xbox, manually swapped | Overall normal operation reported after activation; individual picture, audio, switching, Game Mode, ALLM, HDR, and CEC checks not independently recorded |
+| HDMI 2 | PlayStation 5 | Overall normal operation reported after activation; individual feature checks not independently recorded |
+| HDMI 3 | Raspberry Pi 5 running Steam Link; TV input labelled PC | Overall normal operation reported after activation; Steam Link, Bluetooth, and individual feature checks not independently recorded |
+| Network and Emby | Wi-Fi; local network confirmed; Emby server access and playback confirmed | Owner-confirmed; timing relative to activation is not separately documented |
+| Protected streaming apps | Reported working | Owner-confirmed overall report; per-app launch/playback test results are not individually recorded |
+
+The owner reports that everything continued working normally after Developer Mode activation. This is an overall owner observation, not a pass for every item in the detailed baseline. In particular, HDR, ALLM, HDMI-CEC/Simplink, ARC/eARC, Bluetooth, and per-port feature checks remain unverified unless separately recorded.
 
 ## Native optimisation results
 

@@ -2,6 +2,8 @@
 
 Use this manual checklist before any Developer Mode installation, activation, or SSH pairing. It is an observation record, not a device backup. Complete it with the owner and the TV/connected equipment; no computer connection to the TV is needed. Do not change settings while capturing the baseline. Record only necessary descriptions; omit passwords, tokens, serial numbers, account details, public IP addresses, MAC addresses, and network credentials.
 
+Developer Mode activation and SSH pairing have since been completed after separate owner approvals. The owner reports normal overall operation afterward, Wi-Fi and local-network connectivity, Emby access/playback, and protected streaming apps working. These reports do not convert the individual results below to Pass. Keep per-port, HDR, ALLM, HDMI-CEC/Simplink, ARC/eARC, Bluetooth, Steam Link, and per-app checks Not tested unless a dated result is entered. Device identity and activation facts are summarized in [hardware.md](hardware.md).
+
 ## Result format
 
 Use one result for every item:
@@ -121,9 +123,9 @@ These are reference values recorded in [hardware.md](hardware.md) from owner ins
 
 Previously observed limitations to keep in mind when recording current results: the webOS introductory banner remained visible, and CMP legitimate-interest processing may remain for some vendors. These observations do not prove current behavior or that all tracking stopped.
 
-## Readiness for a separately approved Developer Mode slice
+## Historical readiness gate for Developer Mode activation
 
-Activation is not authorized by completing this checklist. Each Developer Mode app installation, activation, and SSH pairing operation needs its own explicit approval after the recovery information is presented.
+This historical checklist did not itself authorize activation. Developer Mode installation, activation, and SSH pairing were subsequently completed after separate owner approvals. It does not authorize any new TV operation.
 
 - [ ] Baseline completed; every failure is understood and recorded, with no unexplained failures.
 - [ ] Exact physical model, firmware, and webOS version reconfirmed on the TV.
@@ -136,4 +138,4 @@ Activation is not authorized by completing this checklist. Each Developer Mode a
 - [ ] Separate approval recorded for Developer Mode activation.
 - [ ] Separate approval recorded for SSH pairing / key retrieval.
 
-After an approved activation, repeat the same HDMI, gaming, networking, Emby, streaming, and settings checks above. Add the post-activation date and result alongside each baseline result. Any newly failing established feature is a regression: halt further device changes until it is investigated. Follow [developer-mode-runbook.md](developer-mode-runbook.md) and [rollback.md](rollback.md) for recovery boundaries and deactivation.
+After activation, repeat the same HDMI, gaming, networking, Emby, streaming, and settings checks above. Add the post-activation date and result alongside each baseline result. The owner reports normal overall operation after activation, but individual checks remain Not tested until recorded. Any newly failing established feature is a regression: halt further device changes until it is investigated. Follow [developer-mode-runbook.md](developer-mode-runbook.md) and [rollback.md](rollback.md) for recovery boundaries and deactivation.
