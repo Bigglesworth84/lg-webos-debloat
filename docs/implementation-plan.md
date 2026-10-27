@@ -72,6 +72,12 @@ The next implementation slice is preparation and read-only discovery only. Befor
 
 No TV connection or Developer Mode activation is authorized in the current slice. No app install or removal is included in the next discovery milestone. Rooting remains deferred. YouTube AdFree remains unverified on this TV.
 
+## Milestone 003, Slice 1 — offline tooling foundation
+
+The offline tooling foundation is implemented on branch `codex/m003-offline-inventory`. It uses the official `@webos-tools/cli` 3.2.6 with Node 24.22.1 in a rootless Ubuntu Distrobox, has a custom home outside the repository, and mounts the repository read-only. Distrobox is not a security boundary. The checked-in inventory utility is offline-only: it parses sanitized fixture output, creates timestamped private manifests, checks SHA-256 integrity, and builds (but never executes) a strict future read-command allowlist.
+
+No TV was contacted and no Developer Mode action was taken. There are no restorable TV-state artifacts. CLI version/help commands were run in the Distrobox under Node 24.22.1; a no-device CLI help smoke test also passed under Node 22.23.4. See [offline environment notes](webos-cli-environment.md) and the [future manual runbook](developer-mode-runbook.md).
+
 ## Milestones and acceptance criteria
 
 | Milestone | Scope | Acceptance criteria |

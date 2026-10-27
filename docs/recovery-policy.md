@@ -36,16 +36,16 @@ Checksums establish artifact integrity only. They do not establish completeness,
 
 ## Framework design
 
-No device-facing scripts are implemented in this slice. They must wait until supported APIs, permissions, field coverage, and restore behavior are established. The intended lightweight interfaces are:
+The current tooling foundation is deliberately offline-only: it builds the documented read-command argument vectors but has no device command executor. It parses sanitized fixture output, creates private fixture snapshots, and verifies their manifests. Device-facing execution must wait until supported APIs, permissions, field coverage, restoration behavior, and a separately approved TV slice are established. The intended future interfaces are:
 
 | Capability | Intended behavior | Current status |
 |---|---|---|
-| Inventory | Read-only device metadata, installed-app listing, and supported accessible configuration values; export structured data and state incomplete coverage. | Not implemented. Future Developer Mode and CLI setup requires separate approval. |
-| Backup | Timestamped snapshot, metadata, inventory, supported configuration exports, manifest, and checksums; distinguish observations from restorable artifacts. | Not implemented. No confirmed device backup interface or restorable TV state. |
-| Restore | Dry-run by default; explicit item selection; verify checksums, device identity, and firmware compatibility; restore only state supported by documented management interfaces; refuse unsupported items. | Not implemented. No restore interface has been established. |
+| Inventory | Read-only device metadata and installed-app listing using explicit commands; export structured data and state incomplete coverage. | Offline parser/snapshot foundation only. Device connection and command execution are not implemented. Developer Mode and CLI setup require separate approval. |
+| Backup | Timestamped snapshot, metadata, inventory, supported configuration exports, manifest, and checksums; distinguish observations from restorable artifacts. | Fixture snapshot creation only. No confirmed device backup interface or restorable TV state. |
+| Restore | Dry-run by default; explicit item selection; verify checksums, device identity, and firmware compatibility; restore only state supported by documented management interfaces; refuse unsupported items. | Not implemented. Restore requests are rejected; no restore interface has been established. |
 | Verify | Compare current read-only state with a selected baseline, report changes and gaps, and flag apps/functions needing manual checks. | Not implemented. App inventory completeness and configuration coverage are unknown. |
 
-Possible future files are `scripts/inventory.sh`, `scripts/backup.sh`, `scripts/restore.sh`, and `scripts/verify.sh`. Do not create wrappers until their exact supported operations and safe failure behavior can be documented. Never hide mutations in inventory, backup, or verification. Do not provide generic bulk restore or removal.
+The current `scripts/webos_inventory.py` has only `capture-fixtures` and `validate` actions. `scripts/webos-cli-env.sh` and `scripts/install_webos_cli.sh` prepare workstation tooling, not TV operations. The allowlist argument builder is not an executor. Do not add a live capture wrapper until its exact supported operations and safe failure behavior can be documented and separately approved. Never hide mutations in inventory, backup, or verification. Do not provide generic bulk restore or removal.
 
 ## Current known recovery boundaries
 
