@@ -39,7 +39,7 @@ CLI_VERSION = "3.2.6"
 NODE_VERSION = "v24.22.1"
 METADATA_ALLOWLIST = frozenset({"modelName", "sdkVersion", "firmwareVersion", "boardType"})
 METADATA_EXCLUDED_FIELDS = frozenset({"otaId"})
-METADATA_INFO_RE = re.compile(r"^\[Info\]\s+Set target device\s*:\s*[A-Za-z0-9][A-Za-z0-9_-]{0,31}\s*$")
+CLI_INFO_HEADER_RE = re.compile(r"^\[Info\]\s+Set target device\s*:\s*[A-Za-z0-9][A-Za-z0-9_-]{0,31}\s*$")
 APP_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{1,127}$")
 SAFE_METADATA_VALUE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 IPV4_RE = re.compile(r"^(?:\d{1,3}\.){3}\d{1,3}$")
@@ -235,7 +235,7 @@ def _parse_metadata(data: bytes) -> tuple[dict[str, str], str, dict[str, int]]:
     for line in text.splitlines():
         if not line.strip():
             continue
-        if METADATA_INFO_RE.fullmatch(line):
+        if CLI_INFO_HEADER_RE.fullmatch(line):
             continue
         match = re.match(r"^\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.*?)\s*$", line)
         if not match:
@@ -277,6 +277,15 @@ def _parse_apps(data: bytes) -> tuple[list[str], str, dict[str, int | None]]:
     if not data:
         return [], "successful_empty_output", {"accepted": 0, "rejected": 0, "total": None}
     text = data.decode("utf-8", "replace")
+    lines = text.splitlines()
+    first_content_line = next((index for index, line in enumerate(lines) if line.strip()), None)
+    if first_content_line is not None and CLI_INFO_HEADER_RE.fullmatch(lines[first_content_line].strip()):
+        # Strip only the exact known CLI header. Unknown informational output
+        # remains input to the strict JSON/text parser and cannot be hidden.
+        del lines[first_content_line]
+        text = "\n".join(lines)
+        if not text.strip():
+            return [], "successful_empty_output", {"accepted": 0, "rejected": 0, "total": None}
     try:
         decoded = json.loads(text)
     except json.JSONDecodeError:

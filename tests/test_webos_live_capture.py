@@ -162,7 +162,127 @@ class LiveCaptureTests(unittest.TestCase):
         self.assertEqual(artifact["application_ids"], ["com.example.good"])
         self.assertNotIn("private title", (snapshot / "applications.json").read_text())
         self.assertNotIn("secret", (snapshot / "applications.json").read_text())
-        self.assertEqual(self.manifest(snapshot)["capture_status"], "successful_capture")
+        manifest = self.manifest(snapshot)
+        self.assertEqual(manifest["capture_status"], "successful_capture")
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+
+    def test_application_header_on_stderr_does_not_change_empty_stdout_parsing(self):
+        self.write_cli("ares-install", stderr="[Info] Set target device : fixture-tv\n")
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        artifact = json.loads((snapshot / "applications.json").read_text())
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "successful_empty_output")
+        self.assertEqual(artifact["application_ids"], [])
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+        self.assertNotIn("fixture-tv", (snapshot / "applications.json").read_text())
+
+    def test_application_header_only_on_stdout_is_successful_zero_record_observation(self):
+        self.write_cli("ares-install", stdout="[Info] Set target device : fixture-tv\n")
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        artifact = json.loads((snapshot / "applications.json").read_text())
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "successful_empty_output")
+        self.assertEqual(manifest["capture_status"], "successful_capture")
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+        self.assertEqual(artifact["application_ids"], [])
+        self.assertNotIn("fixture-tv", (snapshot / "applications.json").read_text())
+
+    def test_application_header_with_surrounding_whitespace_is_recognized(self):
+        self.write_cli("ares-install", stdout=" \t\n  [Info] Set target device : fixture-tv  \n \t\n")
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "successful_empty_output")
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+
+    def test_application_header_before_empty_json_array_is_recognized(self):
+        self.write_cli("ares-install", stdout="[Info] Set target device : fixture-tv\n[]\n")
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "recognized_empty_json_collection")
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+
+    def test_application_header_before_populated_json_is_recognized(self):
+        self.write_cli(
+            "ares-install",
+            stdout='[Info] Set target device : fixture-tv\n[{"id":"com.example.good"}]\n',
+        )
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        artifact = json.loads((snapshot / "applications.json").read_text())
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "recognized_records")
+        self.assertEqual(artifact["application_ids"], ["com.example.good"])
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+
+    def test_application_header_before_text_table_is_recognized(self):
+        self.write_cli(
+            "ares-install",
+            stdout="[Info] Set target device : fixture-tv\n"
+            "id  title\n"
+            "com.example.good  Synthetic app\n",
+        )
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        artifact = json.loads((snapshot / "applications.json").read_text())
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "recognized_records")
+        self.assertEqual(artifact["application_ids"], ["com.example.good"])
+        self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
+
+    def test_unknown_or_malformed_application_info_header_is_not_discarded(self):
+        for index, response in enumerate((
+            "[Info] Unexpected message : fixture-tv\n",
+            "[Info] Set target device : fixture-tv extra\n",
+        )):
+            with self.subTest(response=response):
+                case_root = self.root / str(index)
+                case_root.mkdir()
+                original_root = self.root
+                self.root = case_root
+                self.write_cli("ares-install", stdout=response)
+                snapshot = self.capture(("applications",))
+                self.assertEqual(self.manifest(snapshot)["operations"][0]["parsing_outcome"], "unrecognized_output")
+                self.root = original_root
+
+    def test_application_header_does_not_make_malformed_json_valid(self):
+        self.write_cli(
+            "ares-install",
+            stdout='[Info] Set target device : fixture-tv\n[{"id":"com.example.broken"}\n',
+        )
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        artifact = json.loads((snapshot / "applications.json").read_text())
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "unrecognized_output")
+        self.assertEqual(artifact["application_ids"], [])
+        self.assertEqual(manifest["capture_status"], "partial")
+
+    def test_nonzero_application_exit_with_info_header_is_not_parsed_or_retained(self):
+        self.write_cli(
+            "ares-install",
+            stdout="[Info] Set target device : fixture-tv\n",
+            stderr="synthetic diagnostic secret-value",
+            status=9,
+        )
+        snapshot = self.capture(("applications",))
+        manifest = self.manifest(snapshot)
+        self.assertEqual(manifest["operations"][0]["execution_outcome"], "failed")
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "not_parsed")
+        persisted = "".join(path.read_text() for path in snapshot.iterdir())
+        self.assertNotIn("fixture-tv", persisted)
+        self.assertNotIn("synthetic diagnostic", persisted)
+        self.assertNotIn("secret-value", persisted)
+
+    def test_application_header_alias_and_sensitive_record_data_are_not_persisted(self):
+        self.write_cli(
+            "ares-install",
+            stdout='[Info] Set target device : synthetic-private-alias\n'
+            '[{"id":"com.example.good","title":"synthetic-private-title",'
+            '"token":"synthetic-private-token"}]\n',
+        )
+        snapshot = self.capture(("applications",))
+        persisted = "".join(path.read_text() for path in snapshot.iterdir())
+        self.assertNotIn("synthetic-private-alias", persisted)
+        self.assertNotIn("synthetic-private-title", persisted)
+        self.assertNotIn("synthetic-private-token", persisted)
+        self.assertEqual(self.manifest(snapshot)["inventory_coverage"], "unknown_or_incomplete")
 
     def test_network_address_shaped_metadata_and_application_ids_are_discarded(self):
         self.write_cli(
