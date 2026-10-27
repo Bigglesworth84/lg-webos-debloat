@@ -66,10 +66,7 @@ case "$action" in
       shift
     done
     (($# == 0)) || { printf 'Unexpected capture arguments.\n' >&2; exit 2; }
-    for required_cli in ares-device ares-install; do
-      [[ -x "$HOME/.local/npm/bin/$required_cli" ]] || { printf 'Pinned webOS CLI is missing %s.\n' "$required_cli" >&2; exit 2; }
-    done
-    distrobox enter "$BOX_NAME" -- bash -c 'umask 077; chmod 700 "$HOME"; if [[ -d "$HOME/.webos" ]]; then chmod -R go-rwx "$HOME/.webos"; fi; if [[ -d "$HOME/.ssh" ]]; then chmod -R go-rwx "$HOME/.ssh"; fi; source "$1" || exit $?; webos_cli_activate_path || exit $?; shift; exec "$@"' webos-cli-capture /workspace/lg-webos-debloat/scripts/webos-cli-path.sh "${expected[@]}"
+    distrobox enter "$BOX_NAME" -- bash -c 'umask 077; chmod 700 "$HOME"; if [[ -d "$HOME/.webos" ]]; then chmod -R go-rwx "$HOME/.webos"; fi; if [[ -d "$HOME/.ssh" ]]; then chmod -R go-rwx "$HOME/.ssh"; fi; source "$1" || exit $?; webos_cli_activate_path || exit $?; shift; for required_cli in ares-device ares-install; do if [[ ! -x "$HOME/.local/npm/bin/$required_cli" ]]; then printf "Pinned webOS CLI is missing %s.\n" "$required_cli" >&2; exit 2; fi; done; command_name="$1"; shift; exec "$HOME/.local/npm/bin/$command_name" "$@"' webos-cli-capture /workspace/lg-webos-debloat/scripts/webos-cli-path.sh "${expected[@]}"
     ;;
   remove)
     command -v distrobox >/dev/null || { printf 'distrobox is required on the Bazzite host.\n' >&2; exit 2; }

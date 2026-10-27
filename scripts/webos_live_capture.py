@@ -20,13 +20,13 @@ from typing import Any
 try:  # Support both `python scripts/webos_live_capture.py` and package imports in tests.
     from .webos_inventory import (
         DEVICE_OPERATIONS, RESTORE_CLASSIFICATION, InventoryError, command_argv,
-        parse_applications, parse_device_metadata, prepare_output_root, secure_directory,
+        parse_applications, prepare_output_root, secure_directory,
         secure_write, serialize_json, sha256_file, validate_alias,
     )
 except ImportError:
     from webos_inventory import (
         DEVICE_OPERATIONS, RESTORE_CLASSIFICATION, InventoryError, command_argv,
-        parse_applications, parse_device_metadata, prepare_output_root, secure_directory,
+        parse_applications, prepare_output_root, secure_directory,
         secure_write, serialize_json, sha256_file, validate_alias,
     )
 
@@ -38,6 +38,8 @@ MAX_OUTPUT_BYTES = 1024 * 1024
 CLI_VERSION = "3.2.6"
 NODE_VERSION = "v24.22.1"
 METADATA_ALLOWLIST = frozenset({"modelName", "sdkVersion", "firmwareVersion", "boardType"})
+METADATA_EXCLUDED_FIELDS = frozenset({"otaId"})
+METADATA_INFO_RE = re.compile(r"^\[Info\]\s+Set target device\s*:\s*[A-Za-z0-9][A-Za-z0-9_-]{0,31}\s*$")
 APP_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{1,127}$")
 SAFE_METADATA_VALUE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}$")
 IPV4_RE = re.compile(r"^(?:\d{1,3}\.){3}\d{1,3}$")
@@ -226,30 +228,45 @@ def _run_bounded(argv: tuple[str, ...], timeout_seconds: int, output_limit: int)
 
 def _parse_metadata(data: bytes) -> tuple[dict[str, str], str, dict[str, int]]:
     text = data.decode("utf-8", "replace")
-    parsed, _ = parse_device_metadata(text)
     allowed: dict[str, str] = {}
     rejected = 0
     recognized_lines = 0
+    seen: set[str] = set()
     for line in text.splitlines():
+        if not line.strip():
+            continue
+        if METADATA_INFO_RE.fullmatch(line):
+            continue
         match = re.match(r"^\s*([A-Za-z][A-Za-z0-9_]*)\s*:\s*(.*?)\s*$", line)
         if not match:
-            if line.strip():
-                rejected += 1
+            rejected += 1
             continue
         key, value = match.groups()
+        if key in METADATA_EXCLUDED_FIELDS:
+            # This known CLI field is intentionally discarded and is not part
+            # of metadata completeness. Its value is never persisted.
+            continue
         if key not in METADATA_ALLOWLIST:
             rejected += 1
             continue
         recognized_lines += 1
-        if key in parsed and parsed[key] == value and _safe_metadata_value(value):
+        if key in seen:
+            # Never let a later duplicate replace an earlier candidate, even
+            # when the duplicate happens to be identical.
+            allowed.pop(key, None)
+            rejected += 1
+            continue
+        seen.add(key)
+        if _safe_metadata_value(value):
             allowed[key] = value
         else:
             rejected += 1
+    missing_fields = METADATA_ALLOWLIST - allowed.keys()
     if not data:
         status = "successful_empty_output"
     elif not recognized_lines:
         status = "unrecognized_output"
-    elif rejected or len(allowed) < len(METADATA_ALLOWLIST):
+    elif rejected or missing_fields:
         status = "partial_records"
     else:
         status = "recognized_records"

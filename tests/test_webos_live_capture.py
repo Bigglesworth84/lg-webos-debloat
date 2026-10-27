@@ -93,20 +93,67 @@ class LiveCaptureTests(unittest.TestCase):
     def test_successful_metadata_capture_persists_only_allowlisted_fields(self):
         self.write_cli(
             "ares-device",
-            "modelName : WEBOS6.0\nsdkVersion : 6.1.0\nfirmwareVersion : 03.53.45\nboardType : K7LP_EU\notaId : secret-ota\nserialNumber : private-serial\n",
+            "[Info] Set target device : fixture-tv\n"
+            "modelName : SYNTHETIC.MODEL\n"
+            "sdkVersion : 0.0.0\n"
+            "firmwareVersion : 00.00.00\n"
+            "boardType : SYNTHETIC_BOARD\n"
+            "otaId : [REDACTED]\n",
         )
         snapshot = self.capture()
         content = json.loads((snapshot / "device-metadata.json").read_text())
         self.assertEqual(content["fields"], {
-            "modelName": "WEBOS6.0", "sdkVersion": "6.1.0",
-            "firmwareVersion": "03.53.45", "boardType": "K7LP_EU",
+            "modelName": "SYNTHETIC.MODEL", "sdkVersion": "0.0.0",
+            "firmwareVersion": "00.00.00", "boardType": "SYNTHETIC_BOARD",
         })
         self.assertNotIn("otaId", (snapshot / "device-metadata.json").read_text())
-        self.assertNotIn("private-serial", "".join(path.read_text() for path in snapshot.iterdir()))
         manifest = self.manifest(snapshot)
-        self.assertEqual(manifest["capture_status"], "partial")  # otaId and serial output are discarded records.
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "recognized_records")
+        self.assertEqual(manifest["capture_status"], "successful_capture")
         self.assertEqual(manifest["inventory_coverage"], "unknown_or_incomplete")
         self.assertEqual(validate_snapshot(snapshot), [])
+
+    def test_metadata_missing_field_and_malformed_output_are_not_complete(self):
+        self.write_cli(
+            "ares-device",
+            "[Info] Set target device : fixture-tv\n"
+            "modelName : SYNTHETIC.MODEL\nsdkVersion : 0.0.0\n"
+            "firmwareVersion : 00.00.00\nmalformed metadata\notaId : [REDACTED]\n",
+        )
+        snapshot = self.capture()
+        manifest = self.manifest(snapshot)
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "partial_records")
+        self.assertEqual(manifest["capture_status"], "partial")
+        metadata = json.loads((snapshot / "device-metadata.json").read_text())
+        self.assertNotIn("boardType", metadata["fields"])
+        self.assertIn("boardType", metadata["missing_fields"])
+        self.assertNotIn("[REDACTED]", "".join(path.read_text() for path in snapshot.iterdir()))
+
+    def test_other_unrecognised_metadata_fields_are_discarded_and_partial(self):
+        self.write_cli(
+            "ares-device",
+            "modelName : SYNTHETIC.MODEL\nsdkVersion : 0.0.0\n"
+            "firmwareVersion : 00.00.00\nboardType : SYNTHETIC_BOARD\n"
+            "serialNumber : [REDACTED]\n",
+        )
+        snapshot = self.capture()
+        manifest = self.manifest(snapshot)
+        self.assertEqual(manifest["operations"][0]["parsing_outcome"], "partial_records")
+        self.assertNotIn("serialNumber", (snapshot / "device-metadata.json").read_text())
+        self.assertNotIn("[REDACTED]", "".join(path.read_text() for path in snapshot.iterdir()))
+
+    def test_duplicate_allowed_metadata_field_is_not_silently_accepted(self):
+        self.write_cli(
+            "ares-device",
+            "modelName : SYNTHETIC.MODEL\nsdkVersion : 0.0.0\n"
+            "firmwareVersion : 00.00.00\nboardType : SYNTHETIC_BOARD\n"
+            "boardType : SYNTHETIC_BOARD\n",
+        )
+        snapshot = self.capture()
+        metadata = json.loads((snapshot / "device-metadata.json").read_text())
+        record = self.manifest(snapshot)["operations"][0]
+        self.assertNotIn("boardType", metadata["fields"])
+        self.assertEqual(record["parsing_outcome"], "partial_records")
 
     def test_successful_application_capture_persists_ids_only(self):
         self.write_cli("ares-install", '[{"id":"com.example.good","title":"private title","token":"secret"}]')

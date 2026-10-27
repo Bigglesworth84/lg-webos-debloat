@@ -23,6 +23,8 @@ class InventoryParsingTests(unittest.TestCase):
             "boardType : K7LP_EU\notaId : HE_DTV_W21P_EU\n"
         )
         self.assertEqual(data["firmwareVersion"], "03.53.45")
+        self.assertEqual(set(data), {"modelName", "sdkVersion", "firmwareVersion", "boardType"})
+        self.assertNotIn("otaId", data)
         self.assertEqual(missing, [])
 
     def test_missing_metadata_is_reported_without_failure(self):
@@ -31,7 +33,7 @@ class InventoryParsingTests(unittest.TestCase):
         self.assertIn("firmwareVersion", missing)
 
     def test_unexpected_metadata_output_has_no_guessed_fields(self):
-        self.assertEqual(parse_device_metadata("permission denied\n"), ({}, list(("modelName", "sdkVersion", "firmwareVersion", "boardType", "otaId"))))
+        self.assertEqual(parse_device_metadata("permission denied\n"), ({}, list(("modelName", "sdkVersion", "firmwareVersion", "boardType"))))
 
     def test_parses_json_application_output(self):
         apps, status, counts = parse_applications('[{"id":"com.example.app","title":"Demo"}]')
@@ -119,7 +121,9 @@ class SnapshotTests(unittest.TestCase):
     def test_creates_timestamped_private_manifest_with_hashes(self):
         snapshot = self.make_snapshot()
         manifest = json.loads((snapshot / "manifest.json").read_text())
+        metadata = json.loads((snapshot / "device-metadata.json").read_text())
         self.assertEqual(manifest["capture_timestamp_utc"], "2026-10-27T12:00:00Z")
+        self.assertNotIn("otaId", metadata["fields"])
         self.assertEqual(manifest["restorable_artifacts"], [])
         self.assertEqual(manifest["artifacts"]["applications.json"]["type"], "read-only observation")
         self.assertEqual(manifest["artifacts"]["device-metadata.json"]["type"], "informational metadata")

@@ -35,7 +35,7 @@ SENSITIVE_TEXT = re.compile(
     r"authorization|private.?key|account|email|mac(?:address)?|"
     r"ip(?:address)?|hostname)\b\s*[:=]\s*)([^\r\n,;]+)"
 )
-METADATA_FIELDS = ("modelName", "sdkVersion", "firmwareVersion", "boardType", "otaId")
+METADATA_FIELDS = ("modelName", "sdkVersion", "firmwareVersion", "boardType")
 ALIAS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$")
 
 
